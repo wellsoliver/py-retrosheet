@@ -1,0 +1,3 @@
+A python script to retrieve Retrosheet game files and parse them into a MySQL database.
+
+Original project from this post: http://blog.wellsoliver.com/2009/06/retrosheet
