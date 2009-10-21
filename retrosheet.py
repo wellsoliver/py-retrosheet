@@ -32,7 +32,7 @@ class Parser(threading.Thread):
 			except Queue.Empty:
 				break;
 
-			cmd = "%s/cwevent -q -f 0-96 -x 0-50 -y %d %d*.EV* > events-%d.csv" % (CHADWICK, year, year, year)
+			cmd = "%s/cwevent -q -f 0-96 -x 0-54 -y %d %d*.EV* > events-%d.csv" % (CHADWICK, year, year, year)
 			subprocess.call(cmd, shell=True)
 			cmd = "%s/cwgame -q -f 0-83 -y %d %d*.EV* > games-%d.csv" % (CHADWICK, year, year, year)
 			subprocess.call(cmd, shell=True)
