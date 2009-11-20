@@ -11,6 +11,7 @@ import re
 import time
 import MySQLdb
 import sys
+import csv
 
 THREADS = 20
 RETROSHEET_URL = "http://www.retrosheet.org/game.htm"
@@ -32,9 +33,9 @@ class Parser(threading.Thread):
 			except Queue.Empty:
 				break;
 
-			cmd = "%s/cwevent -q -f 0-96 -x 0-54 -y %d %d*.EV* > events-%d.csv" % (CHADWICK, year, year, year)
+			cmd = "%s/cwevent -q -n -f 0-96 -x 0-60 -y %d %d*.EV* > events-%d.csv" % (CHADWICK, year, year, year)
 			subprocess.call(cmd, shell=True)
-			cmd = "%s/cwgame -q -f 0-83 -y %d %d*.EV* > games-%d.csv" % (CHADWICK, year, year, year)
+			cmd = "%s/cwgame -q -n -f 0-83 -y %d %d*.EV* > games-%d.csv" % (CHADWICK, year, year, year)
 			subprocess.call(cmd, shell=True)
 			
 			for file in glob.glob("%d*" % year):
@@ -158,15 +159,19 @@ for file in glob.glob("TEAM*"):
 
 for file in glob.glob("events-*.csv"):
 	print "processing %s" % file
-	sql = "LOAD DATA LOCAL INFILE \"%s\" INTO TABLE EVENTS FIELDS TERMINATED BY ',' OPTIONALLY ENCLOSED BY '\"' LINES TERMINATED BY '\n'" % file
-	cursor.execute(sql)
-	db.commit()
-
+	reader = csv.reader(open(file))
+	headers = reader.next()
+	for row in reader:
+		sql = 'INSERT INTO EVENTS(%s) VALUES(%s)' % (','.join(headers), ','.join(['%s'] * len(headers)))
+		cursor.execute(sql, row)
+		
 for file in glob.glob("games-*.csv"):
 	print "processing %s" % file
-	sql = "LOAD DATA LOCAL INFILE \"%s\" INTO TABLE GAMES FIELDS TERMINATED BY ',' OPTIONALLY ENCLOSED BY '\"' LINES TERMINATED BY '\n'" % file
-	cursor.execute(sql)
-	db.commit()
+	reader = csv.reader(open(file))
+	headers = reader.next()
+	for row in reader:
+		sql = 'INSERT INTO GAMES(%s) VALUES(%s)' % (','.join(headers), ','.join(['%s'] * len(headers)))
+		cursor.execute(sql, row)
 
 cursor.close()
 db.close()
