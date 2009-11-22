@@ -71,9 +71,9 @@ cursor = db.cursor()
 
 print "fetching retrosheet files..."
 queue = Queue.Queue()
-pattern = r'href="(?P<url>http://www.retrosheet.org/(?P<year>\d{4})/\d{4}(?P<league>\w{2}).htm)"'
+pattern = r'(\d{4}?)eve\.zip'
 for match in re.finditer(pattern, urllib.urlopen(RETROSHEET_URL).read(), re.S):
-	url = "http://www.retrosheet.org/%s/%s%s.zip" % (match.group("year"), match.group("year"), match.group("league"))
+	url = 'http://www.retrosheet.org/events/%seve.zip' % match.group(1)
 	queue.put(url)
 
 threads = []
