@@ -1,25 +1,28 @@
 YE DESCRIPTION
 -
-A python script to retrieve Retrosheet game files and parse them into a MySQL database.
+A python script to retrieve Retrosheet game files and parse them into a relational database.
 
 Original project from this post: http://blog.wellsoliver.com/2009/06/retrosheet
 
 
 YE REQUIREMENTS
 -
-Chadwick 0.5.2: http://chadwick.sourceforge.net/
+Chadwick 0.5.3: http://chadwick.sourceforge.net/
 python 2.5+ (don't know about 3.0, sorry)
-MySQLdb (which is not included in python 2.5 but is included in 2.6)
+sqlalchemy: http://www.sqlalchemy.org/
 
 
 YE INSTRUCTIONS
 -
 1. create database called 'retrosheet'
-2. run the schema against this database like so: mysql -D retrosheet < retrosheet.sql
-3. run the script retrosheet.py
+2. create the database w/ the included SQL script (the .postgres.sql one works nicely w/ PG, the other w/ MySQL)
+3. configure the file db.ini with your appropriate ENGINE, USER, HOST, PASSWORD, DATABASE values - if yer using postgres, you can optionally define SCHEMA
+   valid values for ENGINE are valid sqlalchemy engines e.g. 'mysql' or 'postgresql'
+   if you have your server configured to allow passwordless connections, you don't need to define USER and PASSWORD
+3. run the script retrosheet.py and wait
 
 
 YE DEBTS OF GRATITUDE
 -
-Tangotiger's Oracle schema for the Retrosheet database on which the MySQL schema is based:
+Tangotiger's Oracle schema for the Retrosheet database on which the schema is based:
 http://www.tangotiger.net/wiki/index.php?title=Retrosheet_Database

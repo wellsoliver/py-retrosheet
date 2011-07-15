@@ -1,4 +1,7 @@
-DROP TABLE IF EXISTS `events` 
+SET search_path TO retrosheet;
+
+DROP TABLE IF EXISTS events;
+
 CREATE TABLE events (
 GAME_ID varchar(12)
 ,AWAY_TEAM_ID varchar(3)
@@ -162,10 +165,10 @@ GAME_ID varchar(12)
 ,UNKNOWN_OUT_EXC_FL varchar(1)
 ,UNCERTAIN_PLAY_EXC_FL varchar(1)
 ,PRIMARY KEY (GAME_ID, EVENT_ID)
-)
-;
+);
 
 DROP TABLE if exists games;
+
 CREATE TABLE games (
 GAME_ID varchar(12) PRIMARY KEY
 ,GAME_DT INTEGER
@@ -189,8 +192,8 @@ GAME_ID varchar(12) PRIMARY KEY
 ,SCORER_RECORD_ID varchar(50)
 ,TRANSLATOR_RECORD_ID varchar(50)
 ,INPUTTER_RECORD_ID varchar(50)
-,INPUT_RECORD_TS varchar(18)
-,EDIT_RECORD_TS varchar(18)
+,INPUT_RECORD_TS varchar(28)
+,EDIT_RECORD_TS varchar(28)
 ,METHOD_RECORD_CD varchar(18)
 ,PITCHES_RECORD_CD varchar(1)
 ,TEMP_PARK_CT INTEGER
@@ -251,10 +254,10 @@ GAME_ID varchar(12) PRIMARY KEY
 ,HOME_LINEUP9_FLD_CD INTEGER
 ,AWAY_FINISH_PIT_ID varchar(8)
 ,HOME_FINISH_PIT_ID varchar(8)
-)
-;
+);
 
 DROP TABLE if exists rosters;
+
 CREATE TABLE rosters (
  YEAR_ID INTEGER
 ,TEAM_ID varchar(3)
@@ -265,33 +268,32 @@ CREATE TABLE rosters (
 ,PIT_HAND_CD varchar(1)
 ,TEAM_TX varchar(3)
 ,POS_TX varchar(5)
-)
-;
+);
 
 DROP TABLE if exists teams;
+
 CREATE TABLE teams (
  YEAR_ID INTEGER
 ,TEAM_ID varchar(3)
 ,LG_ID varchar(1)
 ,LOC_TEAM_TX varchar(30)
 ,NAME_TEAM_TX varchar(30)
-)
-;
+);
 
 DROP TABLE if exists parkcodes;
-CREATE TABLE `parkcodes` (
-  `PARKID` varchar(6) NOT NULL,
-  `NAME` varchar(255) DEFAULT NULL,
-  `AKA` varchar(255) DEFAULT NULL,
-  `CITY` varchar(100) DEFAULT NULL,
-  `STATE` varchar(3) DEFAULT NULL,
-  `START` varchar(11) DEFAULT NULL,
-  `END` varchar(11) DEFAULT NULL,
-  `LEAGUE` varchar(3) DEFAULT NULL,
-  `NOTES` varchar(255) DEFAULT NULL,
-  PRIMARY KEY (`PARKID`)
-)
-;
+
+CREATE TABLE parkcodes (
+  "PARKID" varchar(6) NOT NULL,
+  "NAME" varchar(255) DEFAULT NULL,
+  "AKA" varchar(255) DEFAULT NULL,
+  "CITY" varchar(100) DEFAULT NULL,
+  "STATE" varchar(3) DEFAULT NULL,
+  "START" varchar(11) DEFAULT NULL,
+  "END" varchar(11) DEFAULT NULL,
+  "LEAGUE" varchar(3) DEFAULT NULL,
+  "NOTES" varchar(255) DEFAULT NULL,
+  PRIMARY KEY ("PARKID")
+);
 
 DROP TABLE if exists LKUP_CD_BASES;
 DROP TABLE if exists LKUP_CD_BATTEDBALL;
@@ -309,6 +311,7 @@ DROP TABLE if exists LKUP_CD_RECORDER_PITCHES;
 DROP TABLE if exists LKUP_ID_BASE;
 DROP TABLE if exists LKUP_ID_HOME;
 DROP TABLE if exists LKUP_ID_LAST;
+
 CREATE TABLE LKUP_CD_BASES		(VALUE_CD INTEGER,	SHORTNAME_TX varchar(8), LONGNAME_TX varchar(30), DESCRIPTION_TX varchar(255) );
 CREATE TABLE LKUP_CD_BATTEDBALL		(VALUE_CD varchar(1),	SHORTNAME_TX varchar(8), LONGNAME_TX varchar(30), DESCRIPTION_TX varchar(255) );
 CREATE TABLE LKUP_CD_EVENT		(VALUE_CD INTEGER,	SHORTNAME_TX varchar(8), LONGNAME_TX varchar(30), DESCRIPTION_TX varchar(255) );
@@ -628,4 +631,4 @@ INSERT INTO LKUP_ID_LAST ( VALUE_CD, SHORTNAME_TX, LONGNAME_TX, DESCRIPTION_TX )
 ); 
 INSERT INTO LKUP_ID_LAST ( VALUE_CD, SHORTNAME_TX, LONGNAME_TX, DESCRIPTION_TX ) VALUES ( 
 1, 'L', 'Last', NULL
-); 
+);
