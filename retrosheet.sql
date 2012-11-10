@@ -1,4 +1,4 @@
-DROP TABLE IF EXISTS `events` 
+DROP TABLE IF EXISTS `events`;
 CREATE TABLE events (
 GAME_ID varchar(12)
 ,AWAY_TEAM_ID varchar(3)
