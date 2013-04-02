@@ -26,21 +26,12 @@ def connect(config):
         raise SystemExit
 
     if ENGINE == 'sqlite':
-        # SQLAlchemy connect string uses a third slash for SQLite
-        separator = ':///'
-
-        # SQLite uses a different symbol for bound parameters than MySQL/PostgreSQL
-        bound_param = '?'
-        dbString = ENGINE + separator + '%s' % (DATABASE)
+        dbString = ENGINE + ':///%s' % (DATABASE)
     else:
-        separator = '://'
-        bound_param = '%s'
-
         if USER and PASSWORD:
-            # MySQL & PostgreSQL case
-            dbString = ENGINE + separator + '%s:%s@%s/%s' % (USER, PASSWORD, HOST, DATABASE)
+            dbString = ENGINE + '://%s:%s@%s/%s' % (USER, PASSWORD, HOST, DATABASE)
         else:
-            dbString = ENGINE + separator + '%s/%s' % (HOST, DATABASE)
+            dbString = ENGINE + '://%s/%s' % (HOST, DATABASE)
         
     try:
         db = sqlalchemy.create_engine(dbString)
@@ -53,14 +44,28 @@ def connect(config):
 
 def parse_rosters(file, conn, bound_param):
     print "processing %s" % file
+    
+    try:
+        year = re.search(r"\d{4}", os.path.basename(file)).group(0)
+    except:
+        print 'cannot get year from roster file %s' % file
+        return None
 
     reader = csv.reader(open(file))
+
     for row in reader:
-        sql = 'DELETE FROM rosters WHERE player_id = %s AND team_tx = %s'
-        conn.execute(sql, [row[0], row[5]])
+        row.insert(0, year) # Insert year
+
+        sql = 'SELECT * FROM rosters WHERE year = %s AND player_id = %s AND team_tx = %s'
+        res = conn.execute(sql, [row[0], row[1], row[6]])
+        
+        if res.rowcount == 1:
+            return True
         
         sql = "INSERT INTO rosters VALUES (%s)" % ", ".join([bound_param] * len(row))
         conn.execute(sql, row)
+    
+    return True
 
 
 def parse_teams(file, conn, bound_param):
@@ -68,8 +73,11 @@ def parse_teams(file, conn, bound_param):
 
     reader = csv.reader(open(file))
     for row in reader:
-        sql = 'DELETE FROM teams WHERE team_id = %s'
-        conn.execute(sql, [row[0]])
+        sql = 'SELECT * FROM teams WHERE team_id = %s'
+        res = conn.execute(sql, [row[0]])
+        
+        if res.rowcount == 1:
+            return True
 
         sql = "INSERT INTO teams VALUES (%s)" % ", ".join([bound_param] * len(row))
         conn.execute(sql, row)
@@ -81,8 +89,11 @@ def parse_games(file, conn, bound_param):
     reader = csv.reader(open(file))
     headers = reader.next()
     for row in reader:
-        sql = 'DELETE FROM games WHERE game_id = %s'
-        conn.execute(sql, [row[0]])
+        sql = 'SELECT * FROM games WHERE game_id = %s'
+        res = conn.execute(sql, [row[0]])
+        
+        if res.rowcount == 1:
+            return True
 
         sql = 'INSERT INTO games(%s) VALUES(%s)' % (','.join(headers), ','.join([bound_param] * len(headers)))
         conn.execute(sql, row)
@@ -94,8 +105,11 @@ def parse_events(file, conn, bound_param):
     reader = csv.reader(open(file))
     headers = reader.next()
     for row in reader:
-        sql = 'DELETE FROM events WHERE game_id = %s AND event_id = %s'
-        conn.execute(sql, [row[0], row[96]])
+        sql = 'SELECT * FROM events WHERE game_id = %s AND event_id = %s'
+        res = conn.execute(sql, [row[0], row[96]])
+        
+        if res.rowcount == 1:
+            return True
 
         sql = 'INSERT INTO events(%s) VALUES(%s)' % (','.join(headers), ','.join([bound_param] * len(headers)))
         conn.execute(sql, row)
@@ -111,7 +125,7 @@ def main():
         print 'Cannot connect to database'
         raise SystemExit
     
-    useyear     = False
+    useyear     = False # Use a single year or all years
     verbose     = config.get('debug', 'verbose')
     chadwick    = config.get('chadwick', 'directory')
     path        = os.path.abspath(config.get('download', 'directory'))
@@ -120,6 +134,7 @@ def main():
     years       = []
     opts, args  = getopt.getopt(sys.argv[1:], "y:")
     bound_param = '?' if config.get('database', 'engine') == 'sqlite' else '%s'
+    modules     = ['teams', 'rosters', 'events', 'games'] # items to process
     
     os.chdir(path) # Chadwick seems to need to be in the directory
     
@@ -155,21 +170,25 @@ def main():
                 print "calling '" + cmd + "'"
             subprocess.call(cmd, shell=True)
 
-    mask = "TEAM*" if not useyear else "TEAM%s*" % years[0]
-    for file in glob.glob(mask):
-        parse_teams(file, conn, bound_param)
+    if 'teams' in modules:
+        mask = "TEAM*" if not useyear else "TEAM%s*" % years[0]
+        for file in glob.glob(mask):
+            parse_teams(file, conn, bound_param)
 
-    mask = "*.ROS" if not useyear else "*%s*.ROS" % years[0]
-    for file in glob.glob(mask):
-        parse_rosters(file, conn, bound_param)
+    if 'rosters' in modules:
+        mask = "*.ROS" if not useyear else "*%s*.ROS" % years[0]
+        for file in glob.glob(mask):
+            parse_rosters(file, conn, bound_param)
 
-    mask = '%s/games-*.csv' % csvpath if not useyear else '%s/games-%s*.csv' % (csvpath, years[0])
-    for file in glob.glob(mask):
-        parse_games(file, conn, bound_param)
+    if 'games' in modules:
+        mask = '%s/games-*.csv' % csvpath if not useyear else '%s/games-%s*.csv' % (csvpath, years[0])
+        for file in glob.glob(mask):
+            parse_games(file, conn, bound_param)
 
-    mask = '%s/events-*.csv' % csvpath if not useyear else '%s/events-%s*.csv' % (csvpath, years[0])
-    for file in glob.glob(mask):
-        parse_events(file, conn, bound_param)
+    if 'events' in modules:
+        mask = '%s/events-*.csv' % csvpath if not useyear else '%s/events-%s*.csv' % (csvpath, years[0])
+        for file in glob.glob(mask):
+            parse_events(file, conn, bound_param)
 
     conn.close()
 

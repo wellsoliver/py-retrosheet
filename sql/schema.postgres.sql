@@ -109,7 +109,7 @@ CREATE TABLE games (
 
 CREATE TABLE events (
 	game_id text references games(game_id)
-	,away_team_id text
+	,away_team_id text references teams(team_id)
 	,inn_ct integer
 	,bat_home_id integer
 	,outs_ct integer
@@ -208,7 +208,7 @@ CREATE TABLE events (
 	,ass5_fld_cd integer
 	,event_id integer
 	/* following are extended fields */
-	,home_team_id text
+	,home_team_id text references teams(team_id)
 	,bat_team_id text
 	,fld_team_id text
 	,bat_last_id integer
@@ -272,22 +272,23 @@ CREATE TABLE events (
 	,primary key (game_id, event_id)
 );
 
-CREATE TABLE rosters (
-	 player_id text
-	,last_name_tx text
-	,first_name_tx text
-	,bat_hand_cd text
-	,pit_hand_cd text
-	,team_tx text
-	,pos_tx text
-	,primary key (player_id, team_tx)
-);
-
 CREATE TABLE teams (
 	 team_id text primary key
 	,lg_id text
 	,loc_team_tx text
 	,name_team_tx text
+);
+
+CREATE TABLE rosters (
+	 year integer
+	,player_id text
+	,last_name_tx text
+	,first_name_tx text
+	,bat_hand_cd text
+	,pit_hand_cd text
+	,team_tx text references teams(team_id)
+	,pos_tx text
+	,primary key (year, player_id, team_tx)
 );
 
 CREATE TABLE parkcodes (
