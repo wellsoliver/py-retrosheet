@@ -1,19 +1,6 @@
-An evolution of the original py-retrosheet script from:
-https://github.com/wellsoliver/py-retrosheet
-
-With some improvements
--SQLite3 support: Use 'sqlite' as your engine name in the config
--Optional logging to terminal
--Bugfixes (exception to deal with extra .ROS files that are generated)
--Retrosheet files are no longer downloaded to temp dir so they can be used without having to download again if something fails during parsing
--Split script into download & parsing scripts to make things easier if something fails during parsing
-
-Original project from this post: http://blog.wellsoliver.com/2009/06/retrosheet
-
-
 YE REQUIREMENTS
 -
-Chadwick 0.5.3: http://chadwick.sourceforge.net/
+Chadwick 0.6: http://chadwick.sourceforge.net/
 python 2.5+ (don't know about 3.0, sorry)
 sqlalchemy: http://www.sqlalchemy.org/
 
@@ -25,4 +12,14 @@ sqlalchemy: http://www.sqlalchemy.org/
    if you are using sqlite3, 'database' in the config should be the path to your database file
    specify directory for retrosheet files to be downloaded to, needs to exist before script runs
 4. run download.py to download the files from retrosheet's servers
-5. run parse.py to parse the files and insert the data into the database
+5. run parse.py to parse the files and insert the data into the database. Optionally run parse.py -y XXXX to import just one year
+
+
+YE GRATITUDE
+-
+Github user jeffcrow made many fixes and additions and added sqlite support
+
+JUST THE DATA
+-
+If you're using PostgreSQL (and you should be), you can get a dump of all data from 1990 - 2012:
+https://www.dropbox.com/s/bpr5wuraek6lqjr/retrosheet.1990.2012.sql.tgz

@@ -256,8 +256,7 @@ GAME_ID varchar(12) PRIMARY KEY
 
 DROP TABLE if exists rosters;
 CREATE TABLE rosters (
- YEAR_ID INTEGER
-,TEAM_ID varchar(3)
+ YEAR INTEGER
 ,PLAYER_ID varchar(8)
 ,LAST_NAME_TX varchar(25)
 ,FIRST_NAME_TX varchar(25)
@@ -270,8 +269,7 @@ CREATE TABLE rosters (
 
 DROP TABLE if exists teams;
 CREATE TABLE teams (
- YEAR_ID INTEGER
-,TEAM_ID varchar(3)
+ TEAM_ID varchar(3)
 ,LG_ID varchar(1)
 ,LOC_TEAM_TX varchar(30)
 ,NAME_TEAM_TX varchar(30)
