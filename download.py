@@ -5,6 +5,8 @@ import threading
 import Queue
 import zipfile
 import re
+import getopt
+import sys
 
 
 config = ConfigParser.ConfigParser()
@@ -52,11 +54,27 @@ except OSError:
     print "Directory '" + absolute_path + "' does not exist."
     raise SystemExit
 
-print "fetching retrosheet files..."
+YEAR = False
+
+try:
+    opts, args = getopt.getopt(sys.argv[1:], "y:", ["year="])
+except getopt.GetoptError as e:
+    print 'invalid arguments'
+    raise SystemExit
+
+for o, a in opts:
+    if o in ('-y', '--year'): YEAR = a
+
+if YEAR:
+    print "fetching retrosheet files for year %s..." % YEAR
+else:
+    print "fetching retrosheet files..."
+
 queue = Queue.Queue()
 retrosheet_url = config.get('retrosheet', 'url')
 pattern = r'(\d{4}?)eve\.zip'
 for match in re.finditer(pattern, urllib.urlopen(retrosheet_url).read(), re.S):
+    if YEAR and match.group(1) != YEAR: continue
     url = 'http://www.retrosheet.org/events/%seve.zip' % match.group(1)
     queue.put(url)
 
