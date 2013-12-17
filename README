@@ -1,6 +1,6 @@
 YE REQUIREMENTS
 -
-Chadwick 0.6.0 http://chadwick.sourceforge.net/
+Chadwick 0.6.2 http://chadwick.sourceforge.net/
 python 2.5+ (don't know about 3.0, sorry)
 sqlalchemy: http://www.sqlalchemy.org/
 
@@ -11,11 +11,8 @@ sqlalchemy: http://www.sqlalchemy.org/
    if you have your server configured to allow passwordless connections, you don't need to define USER and PASSWORD
    if you are using sqlite3, 'database' in the config should be the path to your database file
    specify directory for retrosheet files to be downloaded to, needs to exist before script runs
-4. run download.py to download the files from retrosheet's servers
-5. run parse.py to parse the files and insert the data into the database. Optionally run parse.py -y XXXX to import just one year
-
-This is currently dependent on Chadwick 0.6.0: version 0.6.1 introduced a new column for result pitcher ID, and my schema does not yet include this.
-
+4. run download.py to download the files from retrosheet's servers (optionally use --year=XXXX to get only a certain year)
+5. run parse.py to parse the files and insert the data into the database. (optionally use -y XXXX to import just one year)
 
 YE GRATITUDE
 -
