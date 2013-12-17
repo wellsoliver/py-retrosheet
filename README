@@ -23,5 +23,5 @@ Github user jeffcrow made many fixes and additions and added sqlite support
 
 JUST THE DATA
 -
-If you're using PostgreSQL (and you should be), you can get a dump of all data from 1990 - 2012:
-https://www.dropbox.com/s/bpr5wuraek6lqjr/retrosheet.1990.2012.sql.tgz
+If you're using PostgreSQL (and you should be), you can get a dump of all data up through 2013 (warning: 492MB):
+https://www.dropbox.com/s/hmxjsjbeurxtu2s/retrosheet.sql.gz
