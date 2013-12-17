@@ -60,7 +60,7 @@ def parse_rosters(file, conn, bound_param):
         res = conn.execute(sql, [row[0], row[1], row[6]])
         
         if res.rowcount == 1:
-            return True
+            continue
         
         sql = "INSERT INTO rosters VALUES (%s)" % ", ".join([bound_param] * len(row))
         conn.execute(sql, row)
@@ -77,7 +77,7 @@ def parse_teams(file, conn, bound_param):
         res = conn.execute(sql, [row[0]])
         
         if res.rowcount == 1:
-            return True
+            continue
 
         sql = "INSERT INTO teams VALUES (%s)" % ", ".join([bound_param] * len(row))
         conn.execute(sql, row)
@@ -86,33 +86,54 @@ def parse_teams(file, conn, bound_param):
 def parse_games(file, conn, bound_param):
     print "processing %s" % file
 
-    reader = csv.reader(open(file))
-    headers = reader.next()
-    for row in reader:
-        sql = 'SELECT * FROM games WHERE game_id = %s'
-        res = conn.execute(sql, [row[0]])
-        
-        if res.rowcount == 1:
-            return True
+    try:
+        year = re.search(r"\d{4}", os.path.basename(file)).group(0)
+    except:
+        print 'cannot get year from game file %s' % file
+        return None
+ 
+    if conn.engine.driver == 'psycopg2':
+        conn.execute('DELETE FROM games WHERE game_id LIKE \'%%' + year + '%%\'')
+        conn.execute('COPY games FROM %s WITH CSV HEADER', file)
+    else:
+        reader = csv.reader(open(file))
+        headers = reader.next()
+        for row in reader:
+            sql = 'SELECT * FROM games WHERE game_id = %s'
+            res = conn.execute(sql, [row[0]])
+            
+            if res.rowcount == 1:
+                continue
 
-        sql = 'INSERT INTO games(%s) VALUES(%s)' % (','.join(headers), ','.join([bound_param] * len(headers)))
-        conn.execute(sql, row)
+            sql = 'INSERT INTO games(%s) VALUES(%s)' % (','.join(headers), ','.join([bound_param] * len(headers)))
+            conn.execute(sql, row)
 
 
 def parse_events(file, conn, bound_param):
     print "processing %s" % file
 
-    reader = csv.reader(open(file))
-    headers = reader.next()
-    for row in reader:
-        sql = 'SELECT * FROM events WHERE game_id = %s AND event_id = %s'
-        res = conn.execute(sql, [row[0], row[96]])
-        
-        if res.rowcount == 1:
-            return True
+    try:
+        year = re.search(r"\d{4}", os.path.basename(file)).group(0)
+    except:
+        print 'cannot get year from event file %s' % file
+        return None
 
-        sql = 'INSERT INTO events(%s) VALUES(%s)' % (','.join(headers), ','.join([bound_param] * len(headers)))
-        conn.execute(sql, row)
+    if conn.engine.driver == 'psycopg2':
+        conn.execute('DELETE FROM events WHERE game_id LIKE \'%%' + year + '%%\'')
+        conn.execute('COPY events FROM %s WITH CSV HEADER', file)
+        conn.execute('COMMIT')
+    else:
+        reader = csv.reader(open(file))
+        headers = reader.next()
+        for row in reader:
+            sql = 'SELECT * FROM events WHERE game_id = %s AND event_id = %s'
+            res = conn.execute(sql, [row[0], row[96]])
+            
+            if res.rowcount == 1:
+                return True
+
+            sql = 'INSERT INTO events(%s) VALUES(%s)' % (','.join(headers), ','.join([bound_param] * len(headers)))
+            conn.execute(sql, row)
 
 
 def main():
@@ -135,6 +156,10 @@ def main():
     opts, args  = getopt.getopt(sys.argv[1:], "y:")
     bound_param = '?' if config.get('database', 'engine') == 'sqlite' else '%s'
     modules     = ['teams', 'rosters', 'events', 'games'] # items to process
+    
+    if not os.path.exists(chadwick):
+        print 'chadwick does not exist in %s - exiting' % chadwick
+        raise SystemExit
     
     os.chdir(path) # Chadwick seems to need to be in the directory
     
@@ -159,7 +184,7 @@ def main():
 
     for year in years:
         if not os.path.isfile('%s/events-%d.csv' % (csvpath, year)):
-            cmd = "%s/cwevent -q -n -f 0-96 -x 0-60 -y %d %d*.EV* > %s/events-%d.csv" % (chadwick, year, year, csvpath, year)
+            cmd = "%s/cwevent -q -n -f 0-96 -x 0-62 -y %d %d*.EV* > %s/events-%d.csv" % (chadwick, year, year, csvpath, year)
             if(verbose):
                 print "calling '" + cmd + "'"
             subprocess.call(cmd, shell=True)

@@ -51,8 +51,8 @@ absolute_path = os.path.abspath(path)
 try:
     os.chdir(absolute_path)
 except OSError:
-    print "Directory '" + absolute_path + "' does not exist."
-    raise SystemExit
+    print "Directory %s does not exist, creating..." % absolute_path
+    os.makedirs(absolute_path)
 
 YEAR = False
 

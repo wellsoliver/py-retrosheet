@@ -292,14 +292,14 @@ CREATE TABLE rosters (
 
 CREATE TABLE parkcodes (
 	park_id text not null primary key,
-	name text default null,
-	aka text default null,
-	city text default null,
-	state text default null,
-	start text default null,
-	"end" text default null,
-	league text default null,
-	notes text default null
+	name text,
+	aka text,
+	city text,
+	state text,
+	start text,
+	"end" text,
+	league text,
+	notes text
 );
 
 create table lkup_cd_bases		(value_cd integer,	shortname_tx text, longname_tx text, description_tx text );
