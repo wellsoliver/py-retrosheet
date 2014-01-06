@@ -3,6 +3,7 @@ YE REQUIREMENTS
 Chadwick 0.6.2 http://chadwick.sourceforge.net/
 python 2.5+ (don't know about 3.0, sorry)
 sqlalchemy: http://www.sqlalchemy.org/
+[if using postgres] pyscopg2 python package (dependency for sqlalchemy)
 
 1. create database called 'retrosheet'
 2. add schema to the database w/ the included SQL script (the .postgres.sql one works nicely w/ PG, the other w/ MySQL)
