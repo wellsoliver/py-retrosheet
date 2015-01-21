@@ -33,11 +33,8 @@ def connect(config):
         else:
             dbString = ENGINE + '://%s/%s' % (HOST, DATABASE)
         
-    try:
-        db = sqlalchemy.create_engine(dbString)
-        conn = db.connect()
-    except:
-        return None
+    db = sqlalchemy.create_engine(dbString)
+    conn = db.connect()
     
     return conn
 
@@ -140,10 +137,10 @@ def main():
     config = ConfigParser.ConfigParser()
     config.readfp(open('config.ini'))
     
-    conn = connect(config)
-    
-    if conn is None:
-        print 'Cannot connect to database'
+    try:
+        conn = connect(config)
+    except Exception, e:
+        print('Cannot connect to database: %s' % e)
         raise SystemExit
     
     useyear     = False # Use a single year or all years
@@ -156,8 +153,10 @@ def main():
     opts, args  = getopt.getopt(sys.argv[1:], "y:")
     bound_param = '?' if config.get('database', 'engine') == 'sqlite' else '%s'
     modules     = ['teams', 'rosters', 'events', 'games'] # items to process
-    
-    if not os.path.exists(chadwick):
+
+    if not os.path.exists(chadwick) \
+        or not os.path.exists('%s/cwevent' % chadwick) \
+        or not os.path.exists('%s/cwgame' % chadwick):
         print 'chadwick does not exist in %s - exiting' % chadwick
         raise SystemExit
     
