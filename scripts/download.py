@@ -78,7 +78,7 @@ if config.get('download', 'ld_eventfiles'):
 # Queue Game Logs for Download #
 #################################
 
-if config.get('download', 'ld_gamelogs'):
+if config.get('download', 'dl_gamelogs'):
 
     # log next action
     if YEAR:
