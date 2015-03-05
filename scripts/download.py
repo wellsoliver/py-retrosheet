@@ -64,11 +64,12 @@ for match in re.finditer(pattern, urllib.urlopen(retrosheet_url).read(), re.S):
 threads = []
 num_threads = config.getint('download', 'num_threads')
 
+# spin up threads
 for i in range(num_threads):
     t = Fetcher(queue, absolute_path, options)
     t.start()
     threads.append(t)
 
-# finish fetching before processing events into CSV
+# wait for all threads to finish
 for thread in threads:
     thread.join()

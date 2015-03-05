@@ -5,6 +5,7 @@ import Queue
 import zipfile
 
 class Fetcher(threading.Thread):
+
     def __init__(self, queue, path, options):
         threading.Thread.__init__(self)
         self.queue = queue
@@ -12,24 +13,40 @@ class Fetcher(threading.Thread):
         self.options = options
 
     def run(self):
+    
+        # loop
         while 1:
+        
+            # grab something from the queue
+            # exit if queue empty
             try:
                 url = self.queue.get_nowait()
             except Queue.Empty:
                 break
 
+            # extract file name from url
             filename = os.path.basename(url)
 
+            # log
             if(self.options['verbose']):
                 print "fetching " + filename
 
+            # determine the local path
             f = "%s/%s" % (self.path, filename)
+            
+            # save file
             urllib.urlretrieve(url, f)
 
+            # is this a zip file?
             if (zipfile.is_zipfile(f)):
-                zip = zipfile.ZipFile(f, "r")
-                zip.extractall(self.path)
+            
+                #log
                 if(self.options['verbose']):
                     print "extracting " + filename
+                
+                # extract the zip file
+                zip = zipfile.ZipFile(f, "r")
+                zip.extractall(self.path)
 
-            os.remove(f)
+                # remove the zip file
+                os.remove(f)
