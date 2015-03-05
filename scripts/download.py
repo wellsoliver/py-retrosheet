@@ -51,7 +51,7 @@ for o, a in opts:
 # Queue Event Files for Download #
 ##################################
 
-if config.get('download', 'ld_eventfiles'):
+if config.get('download', 'dl_eventfiles'):
 
     # log next action
     if YEAR:
