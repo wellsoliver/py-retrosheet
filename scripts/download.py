@@ -8,10 +8,12 @@ import re
 import getopt
 import sys
 
-
+# load configs
 config = ConfigParser.ConfigParser()
 config.readfp(open('config.ini'))
 
+# load settings into separate var
+# can this be replaced by config var in the future?
 options = {}
 options['verbose'] = config.get('debug', 'verbose')
 
