@@ -5,15 +5,17 @@ import Queue
 import re
 import getopt
 import sys
-
 from classes.fetcher import Fetcher
-
-# initialize variables / set defaults
-YEAR = False
 
 # load configs
 config = ConfigParser.ConfigParser()
 config.readfp(open('config.ini'))
+
+# initialize variables / set defaults
+queue = Queue.Queue()
+YEAR = False
+threads = []
+num_threads = config.getint('download', 'num_threads')
 
 # load settings into separate var
 # can this be replaced by config var in the future?
@@ -44,26 +46,65 @@ except getopt.GetoptError as e:
 # set year if passed in
 for o, a in opts:
     if o in ('-y', '--year'): YEAR = a
+    
+##################################
+# Queue Event Files for Download #
+##################################
 
-# log next action
-if YEAR:
-    print "fetching retrosheet files for year %s..." % YEAR
-else:
-    print "fetching retrosheet files..."
+if config.get('download', 'ld_eventfiles'):
 
-# parse retrosheet page for file and add urls to the queue
-queue = Queue.Queue()
-retrosheet_url = config.get('retrosheet', 'url')
-pattern = r'(\d{4}?)eve\.zip'
-for match in re.finditer(pattern, urllib.urlopen(retrosheet_url).read(), re.S):
-    if YEAR and match.group(1) != YEAR: continue
-    url = 'http://www.retrosheet.org/events/%seve.zip' % match.group(1)
-    queue.put(url)
+    # log next action
+    if YEAR:
+        print "Queuing up Event Files for download (%s only)." % YEAR
+    else:
+        print "Queuing up Event Files for download."
 
-# set threads
-threads = []
-num_threads = config.getint('download', 'num_threads')
+    # parse retrosheet page for files and add urls to the queue
+    retrosheet_url = config.get('retrosheet', 'eventfiles_url')
+    pattern = r'(\d{4}?)eve\.zip'
+    html = urllib.urlopen(retrosheet_url).read()
+    matches = re.finditer(pattern, html, re.S)
+    for match in matches:
+    
+        # if we are looking for a year and this isnt the one, skip it
+        if YEAR and match.group(1) != YEAR:
+            continue
+        
+        # compile absolute url and add to queue
+        url = 'http://www.retrosheet.org/events/%seve.zip' % match.group(1)
+        queue.put(url)
 
+#################################
+# Queue Game Logs for Download #
+#################################
+
+if config.get('download', 'ld_gamelogs'):
+
+    # log next action
+    if YEAR:
+        print "Queuing up Game Logs for download (%s only)." % YEAR
+    else:
+        print "Queuing up Game Logs for download."
+
+    # parse retrosheet page for files and add urls to the queue
+    retrosheet_url = config.get('retrosheet', 'gamelogs_url')
+    pattern = r'gl(\d{4})\.zip'
+    html = urllib.urlopen(retrosheet_url).read()
+    matches = re.finditer(pattern, html, re.S)
+    for match in matches:
+    
+        # if we are looking for a year and this isnt the one, skip it
+        if YEAR and match.group(1) != YEAR:
+            continue
+        
+        # compile absolute url and add to queue
+        url = 'http://www.retrosheet.org/gamelogs/gl%s.zip' % match.group(1)
+        queue.put(url)
+
+##################
+# Download Files #
+##################
+        
 # spin up threads
 for i in range(num_threads):
     t = Fetcher(queue, absolute_path, options)
