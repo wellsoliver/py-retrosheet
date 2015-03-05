@@ -20,7 +20,7 @@ class Fetcher(threading.Thread):
 
             filename = os.path.basename(url)
 
-            if(options['verbose']):
+            if(self.options['verbose']):
                 print "fetching " + filename
 
             f = "%s/%s" % (self.path, filename)
@@ -29,7 +29,7 @@ class Fetcher(threading.Thread):
             if (zipfile.is_zipfile(f)):
                 zip = zipfile.ZipFile(f, "r")
                 zip.extractall(self.path)
-                if(options['verbose']):
+                if(self.options['verbose']):
                     print "extracting " + filename
 
             os.remove(f)
