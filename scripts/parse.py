@@ -30,6 +30,8 @@ def connect(config):
     else:
         if USER and PASSWORD:
             dbString = ENGINE + '://%s:%s@%s/%s' % (USER, PASSWORD, HOST, DATABASE)
+        elif USER:
+            dbString = ENGINE + '://%s@%s/%s' % (USER, HOST, DATABASE)
         else:
             dbString = ENGINE + '://%s/%s' % (HOST, DATABASE)
         
