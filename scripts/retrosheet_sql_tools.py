@@ -1,23 +1,93 @@
 #!/usr/bin/env python
 
+'''
+This file provides a class for interacting with a retrosheet database. 
+It has two main purposes: 
+
+ i. add some additional quantities to the events and games tables
+
+  games
+   - playoff_flag
+   - year_id
+
+  events
+   - playoff_flag
+   - year_id
+   - time_since_1900 : an integer giving the number of seconds since Jan 1, 1900, UTC
+   - tto : times through the order
+   - sun_alt, sun_az : altitude and azimuth of the sun
+   - woba_pts : woba_pts for the event
+   - woba_pts_expected : placeholder for woba_pts expected from the matchup of batter vs pitcher. 
+
+   the location of the sun computations require PyEphem
+   http://rhodesmill.org/pyephem/
+
+   the time computations require timezone information, to translate everything to a common timezone (UTC)
+   pytz: http://pytz.sourceforge.net
+   tzwhere: https://github.com/pegler/pytzwhere/tree/master/tzwhere
+
+   This file can be imported to get acces to the methods, or run via:
+   python retrosheet_sql_tools.py 
+   with optional arguments 
+   -minyr minyr 
+   -maxyr maxyr 
+   -vbose vbose
+   -n2print n2print
+
+   NOTE: This script will write out an sql file VARD_(TIMESTAMP).sql, which can then be sourced by your SQL implementaion (VARD stand for Value Added Retrosheet Database; the Value Added temrinology is a nod to my astronomy days, as in "Value Added Galaxy Catalog", http://sdss.physics.nyu.edu/vagc/). It DOES NOT store any variable to the database. It does update the schema, however, by adding columns for the computed variables.
+
+ ii. provides a method to read sql data into a numpy array, with automatic determination of variable type. The relevant method is sqlQueryToArray(query_string), which returns a numpy array of result of the query
+
+ an example of use is 
+  import retrosheet_sql_tools
+  configFileLocation = 'config.ini'
+  minyr = 2004
+  maxyr = 2004
+  rs = retrosheet_sql_tools.retrosheet_sql(cfgFile=configFileLocation)
+  rs.updateSchema()
+  rs.computeValueAdded(minyr=minyr, maxyr=maxyr)
+  
+  q = 'select tto, avg(woba_pts) as wo, avg(woba_pts_expected) as wx from retrosheet.events where year_id=2004 and woba_pts>=0 and pit_start_fl=\'T\' group by tto'
+  data = rs.sqlQueryToArray(q)
+  print data
+
+'''
+
+import json
 import sqlalchemy
-#import MySQLdb
 import ConfigParser
 import os, sys
 import datetime
 import decimal
 import numpy as np
+import ephem
+import pytz
+from tzwhere import tzwhere
+
 
 class retrosheet_sql:
 
 ##########################
-    def __init__(self, vbose=0, config=None):
-
+    def __init__(self, vbose=0, cfgFile=None):
+        ''' Some methiods to conveniently read data from retrosheet database and store as numpy arrays,
+        and also some methods to add some useful quantities.
+        '''
         self.vbose = vbose
 
+        # placeholder for the fangraphs guts data 
+        self.guts = None
+        self.seamheads = None
+
+        # go ahead and read it in on initialization?
+#        self.guts = self.readFgGutsJson()
+
+        # read the database configuration, and make a connection
         config = ConfigParser.ConfigParser()
-        config.readfp(open('config.ini'))
-    
+        if cfgFile is None:
+            config.readfp(open('config.ini'))
+        else:
+            config.readfp(open(cfgFile))
+
         try:
             self.conn = self.dbConnect(config)
         except Exception, e:
@@ -38,68 +108,10 @@ class retrosheet_sql:
         self.TABLE_NAMES['TBL_RETRO_LAST_DAY'] = '%s.last_day' % self.mysql_db
         self.TABLE_NAMES['TBL_FGGUTS'] = 'mlb.fgGuts'
 
-        self.nbases = 3
-        self.nouts = 3
-        self.state2int = {}
-        self.int2state = {}
-        self.initEnumerateStates()
+        self.eventUpdateData = {}
 
-        self.stateToAbv = {
-            'Alabama': 'AL',
-            'Alaska': 'AK',
-            'Arizona': 'AZ',
-            'Arkansas': 'AR',
-            'California': 'CA',
-            'Colorado': 'CO',
-            'Connecticut': 'CT',
-            'Delaware': 'DE',
-            'Florida': 'FL',
-            'Georgia': 'GA',
-            'Hawaii': 'HI',
-            'Idaho': 'ID',
-            'Illinois': 'IL',
-            'Indiana': 'IN',
-            'Iowa': 'IA',
-            'Kansas': 'KS',
-            'Kentucky': 'KY',
-            'Louisiana': 'LA',
-            'Maine': 'ME',
-            'Maryland': 'MD',
-            'Massachusetts': 'MA',
-            'Michigan': 'MI',
-            'Minnesota': 'MN',
-            'Mississippi': 'MS',
-            'Missouri': 'MO',
-            'Montana': 'MT',
-            'Nebraska': 'NE',
-            'Nevada': 'NV',
-            'New Hampshire': 'NH',
-            'New Jersey': 'NJ',
-            'New Mexico': 'NM',
-            'New York': 'NY',
-            'North Carolina': 'NC',
-            'North Dakota': 'ND',
-            'Ohio': 'OH',
-            'Oklahoma': 'OK',
-            'Oregon': 'OR',
-            'Pennsylvania': 'PA',
-            'Rhode Island': 'RI',
-            'South Carolina': 'SC',
-            'South Dakota': 'SD',
-            'Tennessee': 'TN',
-            'Texas': 'TX',
-            'Utah': 'UT',
-            'Vermont': 'VT',
-            'Virginia': 'VA',
-            'Washington': 'WA',
-            'West Virginia': 'WV',
-            'Wisconsin': 'WI',
-            'Wyoming': 'WY',
-            }
-
-        self.abvToState = {}
-        for k, v in self.stateToAbv.items():
-            self.abvToState[v] = k
+        self.rad2deg = 180.0/np.pi
+        self.deg2rad = 1.0/self.rad2deg
 
 
 ##########################
@@ -109,6 +121,8 @@ class retrosheet_sql:
 
 ###############
     def dbConnect(self, config):
+        ''' Connect to the retrosheet database, using the config.ini file
+        '''
         try:
             ENGINE = config.get('database', 'engine')
             DATABASE = config.get('database', 'database')
@@ -137,118 +151,56 @@ class retrosheet_sql:
         return conn
 
 ###############
-    def initEnumerateStates(self):
-        nb = self.nbases
-        nstate = 0
-        for i in range(2**(self.nbases)):
-            s = bin(i).split('b')[1]
-            for j in range(self.nbases-len(s)+1-1):
-                s = '0'+s
-            for o in range(self.nouts):
-                k = s + '_%02d' % o
-                if self.vbose>=1:
-                    print nstate, i, s, k
-                self.state2int[k] = nstate
-                self.int2state[nstate] = k
-                nstate += 1
+    def updateSchema(self, vbose=0):
+        ''' Updates the retrosheet database tables with new "Value Added" variables'''
+        qs = {}
+        qs['TBL_RETRO_GAMES'] = {}
+        qs['TBL_RETRO_GAMES']['YEAR_ID'] = 'int(4)'
+        qs['TBL_RETRO_GAMES']['PLAYOFF_FLAG'] = 'tinyint(1)'
 
-        allStates = self.state2int.keys()
-        allStates.sort()
-        self.allStates = allStates
+        qs['TBL_RETRO_EVENTS'] = {}
 
+        qs['TBL_RETRO_EVENTS']['YEAR_ID'] = 'int(4)'
+        qs['TBL_RETRO_EVENTS']['PLAYOFF_FLAG'] = 'tinyint(1)'
+        qs['TBL_RETRO_EVENTS']['wOBA_pts'] = 'float'
+        qs['TBL_RETRO_EVENTS']['wOBA_pts_expected'] = 'float'
+        qs['TBL_RETRO_EVENTS']['tto'] = 'tinyint(2)'
+        qs['TBL_RETRO_EVENTS']['sun_alt'] = 'float(8, 4)'
+        qs['TBL_RETRO_EVENTS']['sun_az'] = 'float(8, 4)'
+        qs['TBL_RETRO_EVENTS']['time_since_1900'] = 'bigint(20)'
 
-###############
-    def processParkCover(self, ifile):
-        ifp = open(ifile,'r')
-        line = ifp.read()
-        lines = line.split('\r')
-        
-        for il, l in enumerate(lines):
-            st = l.split(',')
-
-            if len(st)<=1:
-                continue
-
-            if il==0:
-                ks = st[:]
-                continue
-            tmp = {}
-            for i, k in enumerate(ks):
-                print k, st[i] 
-                tmp[k] = st[i]
-            q = 'update %s set cover=\'%s\' where parkid=\'%s\' ' % (self.TBL_RETRO_PARKCODE, tmp['Cover'], tmp['parkID'])
-
-        
-            print q + ';'
-            self.cursor.execute(q)
+        for t in qs:
+            for c in qs[t]:
+                q = 'alter table %s add column %s %s ' % (self.TABLE_NAMES[t], c, qs[t][c])
+                if vbose>=1:
+                    print q
+                try:
+                    self.cursor.execute(q)
+#                    self.conn.commit()
+                except self.cursor.Error, e:
+                    if vbose>=1:
+                        print 'Warning: ' , e
+                    pass
 
 
 ###############
-    def processParkOrientations(self, ifile):
-        ifp = open(ifile,'r')
-        line = ifp.read()
-        lines = line.split('\n')
-        
-        for il, l in enumerate(lines):
-            st = l.split(',')
+    def getSeamheadsParksData(self, 
+                              ifile='external_data/seamheads_parks.json'):
+        ''' Read in the parks data, provided by seamheads. 
+        ''' 
+        return json.load(open(ifile,'r'))
 
-            if len(st)<=1:
-                continue
-
-            if il==0:
-                ks = st[:]
-                continue
-            tmp = {}
-            for i, k in enumerate(ks):
-                print k, st[i] 
-                tmp[k] = st[i]
-            q = 'update %s set orientation=%.2f where parkid=\'%s\' ' % (self.TBL_RETRO_PARKCODE, float(tmp['orientation']), tmp['PARKID'])
-
-        
-            print q + ';'
-            self.cursor.execute(q)
 
 
 ###############
-    def processSeamheadsParks(self, ifile):
-        ifp = open(ifile,'r')
-        line = ifp.read()
-        lines = line.split('\r')
-        
-        for il, l in enumerate(lines):
-            st = l.split(',')
-            if il==0:
-                ks = st[:]
-                continue
-            tmp = {}
-            for i, k in enumerate(ks):
-                print k, st[i] 
-                tmp[k] = st[i]
-            q = 'update %s set latitude=%.6f, longitude=%.6f, altitude=%.2f where parkid=\'%s\' ' % (self.TBL_RETRO_PARKCODE, float(tmp['Latitude']), float(tmp['Longitude']), float(tmp['Altitude']), tmp['PARKID'])
-
-        
-            print q + ';'
-            self.cursor.execute(q)
-
-###############
-    def sqlQueryToArray(self, q, vbose=0):
-        self.cursor.execute(q)
-        rows = self.cursor.fetchall()
-        if len(rows)==0:
-            return []
-
-        row = rows[0]
-
-        keys = []
-        for k in row:
-            if vbose>=1:
-                print k
-            keys.append(k)
-
+    def resultToNpDtype(self, keys, row, vbose=0):
+        ''' Given a result row from a sql query, determine data type, and genberate a corresponding numpy.dtype object 
+        '''
         arr = []
-        for k in keys:
-            x = row[k]
-#            print k, x, type(x)
+        for i, k in enumerate(keys):
+            x = row[i]
+            if vbose>=1:
+                print k, x, type(x)
             if type(x)==type(1):
                 s = (k, 'i4')
             elif type(x)==type(1L):
@@ -260,23 +212,54 @@ class retrosheet_sql:
             else:
                 s = (k, 'S256')
             arr.append(s)
-#        print arr
+
         dt = np.dtype(arr)
+        if vbose>=1:
+            print 'dtype', arr, dt
+        return dt
+
+###############
+    def descriptToKeys(self):
+        return [d[0] for d in self.cursor.description]
+
+###############
+    def sqlQueryToArray(self, q, vbose=0):
+        ''' Given a sql query, execute the query, and return the results in a numpy array. The data type of each column automatically determined, and an appropriate numpy.dtype object is created and filled.
+        '''
+        self.cursor.execute(q)
+        rows = self.cursor.fetchall()
+        if len(rows)==0:
+            return []
+
+        row = rows[0]
+
+        keys = self.descriptToKeys()
+
+        dt = self.resultToNpDtype(keys, row, vbose=vbose)
+
         data = []
         for row in rows:
             tmp = []
-#            print '********************'
-            for k in keys:
-                x = row[k]
-#                print k, row[k]
+            if vbose>=1:
+                print '********************'
+            for i, k in enumerate(keys):
+                x = row[i]
+                if vbose>=1:
+                    print k, row[i]
                 tmp.append(x)
             data.append(tuple(tmp))
-#        print data
+        if vbose>=1:
+            print data
         return np.array(data, dtype=dt)
 
 ###############
-    def csvToArray(self, csvfile, skeys=[], ikeys=[], fkeys=[], delimiter=',', vbose=0):
+    def readFgGutsJson(self, gutsFile='external_data/fgGuts.json'):
+        return json.load(open(gutsFile,'r'))
 
+###############
+    def csvToArray(self, csvfile, skeys=[], ikeys=[], fkeys=[], delimiter=',', vbose=0):
+        ''' Read a csv file into a numpiy array. The default is to treat all variables as double-precision. There is no automatic data-type detection. Columns can be cast to specific data types with the skeys (cast these columns as character arrays), ikeys (cast these columns as 4-bit integers), and fkeys (cast these columns as 4-bit floats) parameters. These should be arrays of column names. A 1-line header on the csv file is assumed.
+        '''
         ifp = open(csvfile,'r')
         hd = ifp.next()
         ifp.close()
@@ -319,24 +302,6 @@ class retrosheet_sql:
 
 
 ##########################
-    def doStadiaGeocoding(self):
-        import pygeocoder
-        geo = pygeocoder.Geocoder()
-        q = 'select * from %s ' % self.TBL_RETRO_PARKCODE
-        data = self.sqlQueryToArray(q)
-        for d in data:
-            print '*********'
-            ks = [d['name'] + ' ' + d['city'] + ' ' + d['state'], d['city'] + ' ' + d['state']]
-            for k in ks:
-                try:
-                    ans = geo.geocode(k)
-                    print '---', k, d, ans.coordinates
-                except pygeocoder.GeocoderError as x:
-                    print 'erro:', x
-                    print 'xxx', k, d
-#                    sys.exit()
-
-##########################
     def computeWobaPlayer(self, plid=None, yrid=None, 
                           lbat=None, 
                           ibb=False, 
@@ -344,6 +309,8 @@ class retrosheet_sql:
                           lOBP=False, 
                           lGrouped = False,
                           vbose=False):
+        ''' Use the retrosheet events table to compute seasonal wOBA for a player, batter (lbat=True) or pitcher (lbat=False, in which case it's wOBA-against). This aggregates data for the named player and passes it on the lower-level method computeWoba. If the lOBP paramter is True, then it computes OBP rather than wOBA. 
+        '''
 
         if lbat:
             ptype = 'bat_id'
@@ -351,9 +318,9 @@ class retrosheet_sql:
             ptype = 'pit_id'
 
         if lGrouped:
-            q = ' select event_cd, event_tx, count(*) n from %s where year_id=%d and %s=\'%s\' ' % (self.TBL_RETRO_EVENTS, yrid, ptype, plid)
+            q = ' select event_cd, event_tx, count(*) n from %s where year_id=%d and %s=\'%s\' ' % (self.TABLE_NAMES['TBL_RETRO_EVENTS'], yrid, ptype, plid)
         else:
-            q = ' select event_cd, event_tx from %s where year_id=%d and %s=\'%s\' ' % (self.TBL_RETRO_EVENTS, yrid, ptype, plid)
+            q = ' select event_cd, event_tx from %s where year_id=%d and %s=\'%s\' ' % (self.TABLE_NAMES['TBL_RETRO_EVENTS'], yrid, ptype, plid)
 
         if not lpost:
             q += ' and playoff_flag=0 '
@@ -384,43 +351,18 @@ class retrosheet_sql:
         ans = self.computeWoba(data, yrid=yrid, ibb=ibb, lOBP=lOBP, lGrouped=lGrouped, vbose=vbose)
         return ans
 
-##########################
-    def doMakePlayoffFlag(self, minyr, maxyr, vbose=False):
-        for i in range(minyr, maxyr+1):
-            ans = self.makePlayoffFlag(i, vbose=vbose)
-#            print ans
-            for k in ans['gids']:
-                q = ' update %s set PLAYOFF_FLAG=%d where GAME_ID=\'%s\' ' % (self.TBL_RETRO_GAMES, ans['gids'][k], k)
-                print q
-                self.cursor.execute(q)
-                self.conn.commit()
-
-                q = ' update %s set PLAYOFF_FLAG=%d where GAME_ID=\'%s\' ' % (self.TBL_RETRO_EVENTS, ans['gids'][k], k)
-                print q
-                self.cursor.execute(q)
-                self.conn.commit()
-
-            print ans['newtt'].year, ans['newtt'].month, ans['newtt'].day
-            q = ' select count(*) n from %s where YEAR_ID=%d ' % (self.TBL_RETRO_LAST_DAY, ans['newtt'].year)
-            print q
-            self.cursor.execute(q)
-            row = self.cursor.fetchone()
-            if row['n']==0:
-                q = ' insert into %s set YEAR_ID=%d, MN_ID=%d, DAY_ID=%d ' % (self.TBL_RETRO_LAST_DAY, ans['newtt'].year, ans['newtt'].month, ans['newtt'].day)
-                print q
-                self.cursor.execute(q)
-                self.conn.commit()
 
 ##########################
-    def makePlayoffFlag(self, yrid, vbose=False):
+    def makePlayoffFlag(self, yrid, vbose=0):
 #        datetime.datetime.
+        ''' Use some heuristics to automatically determine which games are playoffs and which are regular season. Returns a dictionary. The key 'gids' has a vlaue which is a dictionary of game_id-playoff_flag pairs. playoff_flag is an integer, 0=reguklar season, 1=playoffs
+        '''
         data = {}
 
-        q = 'select a.* from (select game_id, home_team_id, away_team_id, cast(substr(game_id,4,4) as unsigned) as year_id, cast(substr(game_id,8,2) as unsigned) as mn_id, cast(substr(game_id,10,2) as unsigned) as day_id, game_ct from %s group by game_id ) a where year_id=%d order by year_id, mn_id, day_id, game_ct ' % (self.TBL_RETRO_GAMES, yrid)
+        q = 'select a.* from (select game_id, home_team_id, away_team_id, cast(substr(game_id,4,4) as unsigned) as year_id, cast(substr(game_id,8,2) as unsigned) as mn_id, cast(substr(game_id,10,2) as unsigned) as day_id, game_ct from %s group by game_id ) a where year_id=%d order by year_id, mn_id, day_id, game_ct ' % (self.TABLE_NAMES['TBL_RETRO_GAMES'], yrid)
 
         tmp = []
-        self.cursor.execute(q)
-        rows = self.cursor.fetchall()
+        rows = self.sqlQueryToArray(q)
         for row in rows:
             aa = row['away_team_id']
             hh = row['home_team_id']
@@ -432,13 +374,17 @@ class retrosheet_sql:
                 data[t]['ngame'] += 1
                 data[t]['gid'].append(row['game_id'])
 
+        if vbose>=1:
+            print 'data', data
+
         for k in data:
             tmp.append(data[k]['ngame'])
         tmp = np.array(tmp)
         mm = int(np.median(tmp))
 
-        print '*************'
-        print yrid, mm
+        if vbose>=1:
+            print '*************'
+            print yrid, mm
 
         max_time = -1
         for k in data:
@@ -455,7 +401,7 @@ class retrosheet_sql:
             if ttI>max_time:
                 max_time=ttI
             newtt = datetime.datetime.fromordinal(ttI)
-            if vbose:
+            if vbose>=1:
                 print k, data[k]['gid'][-1], ttI, \
                     datetime.datetime.fromordinal(ttI), \
                     newtt.year, newtt.month, newtt.day
@@ -490,9 +436,12 @@ class retrosheet_sql:
                     pflag = 0
                 ndata['gids'][gid] = pflag
 
-
+        if vbose>=1:
+            print ndata
         ndata['mm'] = mm
-        print yr, max_time
+
+        if vbose>=1:
+            print yr, max_time
         newtt = datetime.datetime.fromordinal(max_time)
         ndata['newtt'] = newtt
         ndata['max_time'] = max_time
@@ -509,18 +458,20 @@ class retrosheet_sql:
                     ,lGrouped=False
                     ,vbose=False):
 
+        ''' Given some data in the form of retrosheet event_cd, compute wOBA. The ibb parameter determines if IBB are included or ignored. lOBP determines whether to compute wOBA (lOBP=False) or OBP (lOBP=True). If lGrouped=True, it expects a dictionary of dictionary of event_cd-number pairs. Otherwise it just cycles through the keys of indata (which are the event_cd values) and adds up the wOBA points one at a time. Returns a tuple of wOBA_pts, PA, and wOBA=wOBA_pts/PA.
+        '''
+
         if yrid is None:
             q = 'select * from %s where yearid=2012' % self.TBL_FGGUTS
         else:
             q = 'select * from %s where yearid=%d' % (self.TBL_FGGUTS, yrid)
 
-        self.cursor.execute(q)
-        row = self.cursor.fetchone()
         
         wpts = 0.0
         pa = 0
 
         ww = {}
+        row = self.guts[str('yrid')]
         for k in row.keys():
             if lOBP:
                 ww[k] = 1.0
@@ -567,389 +518,260 @@ class retrosheet_sql:
             ans = None
         return wpts, pa, ans
 
-##########################
-    def makeCareer(self):
-        bdata = {}
-        pdata = {}
-
-#####
-        tbl = 'mlb.Batting'
-
-        q = 'drop table if exists blahB '
-        self.cursor.execute(q)
-
-        q = 'create table blahB ' \
-            'select playerID, count(*) as yrs from ' \
-            '(select playerID ' \
-            'from %s ' \
-            'group by playerID, yearID) a ' \
-            'group by playerID ' \
-            % tbl
-
-        print q
-        self.cursor.execute(q)
-        
-        q = 'select * from blahB '
-        self.cursor.execute(q)
-        rows = self.cursor.fetchall()
-        for row in rows:
-            print row
-
-        q = 'create index ipl on blahB(playerID)' ;
-        print q
-        self.cursor.execute(q)
-
-        q = 'drop table if exists BattingCareer '
-        self.cursor.execute(q)
-
-        q = 'create table BattingCareer select ' \
-            'a.playerId, ' \
-            'min(yearID) as minYr,' \
-            'max(yearID) as maxYr,' \
-            'b.yrs, ' \
-            'sum(g) as g, ' \
-            'sum(g_batting) as g_batting, ' \
-            'sum(ab) as ab, ' \
-            'sum(r) as r, ' \
-            'sum(h) as h, ' \
-            'sum(2b) as 2b,' \
-            'sum(3b) as 3b,' \
-            'sum(hr) as hr,' \
-            'sum(rbi) as rbi,' \
-            'sum(sb) as sb,' \
-            'sum(cs) as cs,' \
-            'sum(bb) as bb,' \
-            'sum(so) as so,' \
-            'sum(ibb) as ibb,' \
-            'sum(hbp) as hbp,' \
-            'sum(sh) as sh,' \
-            'sum(sf) as sf,' \
-            'sum(gidp) as gidp ' \
-            'from %s a, %s b ' \
-            'where a.playerID=b.playerID ' \
-            'group by playerID ' % (tbl, 'blahB')
-        print q
-        self.cursor.execute(q)
-
-#####
-        tbl = 'mlb.Pitching'
-
-        q = 'drop table if exists blahP '
-        self.cursor.execute(q)
-
-        q = 'create table blahP ' \
-            'select playerID, count(*) as yrs from ' \
-            '(select playerID ' \
-            'from %s ' \
-            'group by playerID, yearID) a ' \
-            'group by playerID ' \
-            % tbl
-
-        print q
-
-        self.cursor.execute(q)
-        
-        q = 'select * from blahP '
-        self.cursor.execute(q)
-        rows = self.cursor.fetchall()
-        for row in rows:
-            print row
-
-        q = 'create index ipl on blahP(playerID)' ;
-        print q
-        self.cursor.execute(q)
-
-        q = 'select playerID, yearID, stint, ' \
-            'h, bfp, bb, hbp ' \
-            'from %s ' \
-            'where bfp is not null ' % tbl
-        self.cursor.execute(q)
-        rows = self.cursor.fetchall()
-        for row in rows:
-            print row
-            q = 'select * from %s where ' \
-                'playerID=\'%s\' and yearID=%d and stint=%d ' \
-                % (tbl, row['playerID'], row['yearID'], row['stint'])
-            print q
-
-            if row['hbp'] is None:
-                print 'none '
-                hbp = 0
-#                sys.exit()
-            else:
-                hbp = row['hbp']
-            
-            myab = row['bfp']-row['bb']-hbp
-            if myab>0:
-                mybaopp = row['h']/(1.0*myab)
-            else:
-                mybaopp = -1
-
-            if myab==0:
-                q = 'update %s set myab=%d, mybaopp=null where ' \
-                    'playerID=\'%s\' and yearID=%d and stint=%d ' \
-                    % (tbl, 
-                       myab, 
-                       row['playerID'], row['yearID'], row['stint'])
-            else:
-                q = 'update %s set myab=%d, mybaopp=%.3f where ' \
-                    'playerID=\'%s\' and yearID=%d and stint=%d ' \
-                    % (tbl, 
-                       myab, mybaopp, 
-                       row['playerID'], row['yearID'], row['stint'])
-            print q
-            self.cursor.execute(q)
-#        sys.exit()
-
-        q = 'drop table if exists PitchingCareer '
-        self.cursor.execute(q)
-
-        q = 'create table PitchingCareer select ' \
-            'a.playerId, ' \
-            'min(yearID) as minYr,' \
-            'max(yearID) as maxYr,' \
-            'b.yrs, ' \
-            'sum(w) as w, ' \
-            'sum(l) as l, ' \
-            'sum(g) as g, ' \
-            'sum(gs) as gs,' \
-            'sum(cg) as cg,' \
-            'sum(sho) as sho,' \
-            'sum(sv) as sv,' \
-            'sum(IPouts) as IPouts,' \
-            'sum(h) as h,' \
-            'sum(er) as er,' \
-            'sum(hr) as hr,' \
-            'sum(bb) as bb,' \
-            'sum(so) as so,' \
-            'sum(h)/sum(h/baopp) as baopp,' \
-            'sum(h)/sum(myab) as mybaopp,' \
-            '27.0*sum(er)/sum(ipouts) as era,' \
-            'sum(ibb) as ibb,' \
-            'sum(wp) as wp,' \
-            'sum(hbp) as hbp,' \
-            'sum(bk) as bk,' \
-            'sum(bfp) as bfp,' \
-            'sum(myab) as myab,' \
-            'sum(gf) as gf,' \
-            'sum(r) as r ' \
-            'from %s a, %s b ' \
-            'where a.playerID=b.playerID ' \
-            'group by playerID ' % (tbl, 'blahP')
-        print q
-        self.cursor.execute(q)
-
-##########################
-    def getData(self, type, criteria=None, vbose=False):
-        ''' type is one of:
-        Batting
-        BattingCareer
-        Pitching
-        PitchingCareer
-        WAR_bat
-        WAR_pitch
-        games
-        teams
-        WAR_bat_sum
-        fgGuts
-        parkcode
+###############
+    def getEventCount(self, minyr=1950, maxyr=2014, vbose=0):
+        ''' Simple query to ind the max event_id for each game_id. This is useful for estimating time stamps.
         '''
+        q = 'select game_id, max(event_id) as total_events from events group by game_id'
+        dd = self.sqlQueryToArray(q)
+        aa = {}
+        for d in dd:
+            aa[d['game_id']] = d['total_events']
+        del dd
+        return aa
 
-        print type
-        data = []
-        if type=='Batting':
-            strKeys = ['playerID', 'teamID', 'lgID']
-            intKeys = ['yearID', 'stint', 'g', 'g_batting', 
-                       'ab', 'r', 'h', '2b', '3b', 'hr', 'rbi', 
-                       'sb', 'cs', 'bb', 'so', 'ibb', 'hbp', 
-                       'sh', 'sf', 'gidp', 'pa']
-            floatKeys = []
-            tbl = 'mlb.Batting'
-        elif type=='BattingCareer':
-            strKeys = ['playerID']
-            intKeys = ['minYr', 'maxYr', 'yrs', 'g', 'g_batting', 
-                       'ab', 'r', 'h', '2b', '3b', 'hr', 'rbi', 
-                       'sb', 'cs', 'bb', 'so', 'ibb', 'hbp', 
-                       'sh', 'sf', 'gidp', 'pa']
-            floatKeys = []
-            tbl = 'mlb.BattingCareer'
-        elif type=='Pitching':
-            strKeys = ['playerID', 'teamID', 'lgID']
-            intKeys = ['yearID', 'stint', 'w', 'l', 'g'
-                       ,'gs', 'cg', 'sho', 'sv', 'ipouts'
-                       ,'h', 'er', 'hr', 'bb', 'so'
-                       ,'ibb', 'wp', 'hbp', 'bk'
-                       ,'bfp', 'myab', 'gf', 'r'
-                       ]
-            floatKeys = ['baopp', 'mybaopp', 'era']
-            tbl = 'mlb.Pitching'
-        elif type=='PitchingCareer':
-            strKeys = ['playerID']
-            intKeys = ['minYr', 'maxYr', 'yrs', 'w', 'l', 'g'
-                       ,'gs', 'cg', 'sho', 'sv', 'ipouts'
-                       ,'h', 'er', 'hr', 'bb', 'so'
-                       ,'ibb', 'wp', 'hbp', 'bk'
-                       ,'bfp', 'myab', 'gf', 'r'
-                       ]
-            floatKeys = ['baopp', 'mybaopp', 'era']
-            tbl = 'mlb.PitchingCareer'
-        elif type=='games':
-            strKeys = ['GAME_ID', 'PARK_ID'
-                       ,'AWAY_TEAM_ID', 'HOME_TEAM_ID'
-                       ,'AWAY_START_PIT_ID', 'HOME_START_PIT_ID'
+###############
+    def getEventWoba(self, ev, yrid, vbose=0):
+        ''' Given an event_cd, and a year, return the wOBA value 
+        '''
+        outs_cds = [2,3,19]
+        ev2w = {}
+        ev2w[14] = 'wBB'
+        ev2w[15] = 'wBB'
+        ev2w[16] = 'wHBP'
+        ev2w[20] = 'w1B'
+        ev2w[21] = 'w2B'
+        ev2w[22] = 'w3B'
+        ev2w[23] = 'wHR'
 
-                       ]
+    # hack, set a RBOE same as 1B
+        ev2w[18] = 'w1B'
 
-            intKeys = ['GAME_DT' 
-                       ,'TEMP_PARK_CT'
-                       ,'AWAY_SCORE_CT', 'HOME_SCORE_CT'
-                       ,'PLAYOFF_FLAG'
+        g = self.guts[str(yrid)]
 
-                       ]
-            floatKeys = []
-            tbl = 'retrosheet.games'
-        elif type=='teams':
-            strKeys = ['lgID', 'teamID',
-                       'franchID', 'divID', 'name',
-                       'park', 
-                       'teamIDbr', 'teamIDlahman45', 'teamIDretro',
-                       'DivWin', 'LgWin', 'WSWin'
-                       ]
-
-            intKeys = ['yearID', 'Rank', 'G', 'W', 'L',
-                       'R', 'AB', 'H', '2B', '3B', 'HR', 
-                       'BB', 'SO', 'SB', 'CS', 'HBP', 
-                       'SF', 'RA', 'ER', 'CG', 'SHO', 'SV', 'IPouts',
-                       'HA', 'HRA', 'BBA', 'SOA', 'E', 'DP', 'FP', 
-                       'attendance', 'BPF'
-                       ]
-            floatKeys = ['ERA']
-            tbl = 'mlb.teams'
-        elif type=='WAR_bat':
-            strKeys = ['name_common', 'player_ID', 
-                       'team_ID', 'lg_ID', 'pitcher']
-            intKeys = ['stint_ID','age', 'year_ID', 'PA', 'G']
-
-            floatKeys = ['Inn' 
-                         ,'runs_bat'
-                         , 'runs_br' 
-                         , 'runs_dp' 
-                         , 'runs_field'
-                         , 'runs_infield'
-                         , 'runs_outfield'
-                         , 'runs_catcher' 
-                         , 'runs_good_plays'
-                         , 'runs_defense'   
-                         , 'runs_position'  
-                         , 'runs_position_p'
-                         , 'runs_replacement'
-                         , 'runs_above_rep'  
-                         , 'runs_above_avg'  , 
-                         'runs_above_avg_off', 
-                         'runs_above_avg_def', 'WAA', 'WAA_off', 
-                         'WAA_def', 'WAR', 'WAR_def', 'WAR_off', 
-                         'WAR_rep', 'salary', 'teamRpG', 
-                         'oppRpG', 'oppRpPA_rep', 'oppRpG_rep', 
-                         'pyth_exponent', 'pyth_exponent_rep', 
-                         'waa_win_perc', 
-                         'waa_win_perc_off', 
-                         'waa_win_perc_def', 'waa_win_perc_rep'
-                         ]
-
-            tbl = 'mlb.brWAR_bat'
-        elif type=='WAR_pitch':
-            strKeys = ['name_common', 'player_ID', 
-                       'team_ID', 'lg_ID']
-            intKeys = ['stint_ID','age','year_ID', 'G', 'GS',
-                       'IPouts','IPouts_start','IPouts_relief']
-            floatKeys = ['RA'
-                         ,'xRA'
-                         ,'xRA_sprp_adj'
-                         ,'xRA_def_pitcher'
-                         ,'PPF'
-                         ,'PPF_custom'
-                         ,'xRA_final'
-                         ,'BIP'
-                         ,'BIP_perc'
-                         ,'RS_def_total'
-                         ,'runs_above_avg'
-                         ,'runs_above_avg_adj'
-                         ,'runs_above_rep'
-                         ,'RpO_replacement'
-                         ,'GR_leverage_index_avg'
-                         ,'WAR'
-                         ,'salary'
-                         ,'teamRpG'
-                         ,'oppRpG'
-                         ,'pyth_exponent'
-                         ,'waa_win_perc'
-                         ,'WAA'
-                         ,'WAA_adj'
-                         ,'oppRpG_rep'
-                         ,'pyth_exponent_rep'
-                         ,'waa_win_perc_rep'
-                         ,'WAR_rep']
-            tbl = 'mlb.brWAR_pitch'
-        elif type=='fgGuts':
-            strKeys = []
-            intKeys = ['yearid']
-            floatKeys = ['wOBA', 'wOBAscale', 'wBB', 'wHBP'
-                         ,'w1B', 'w2B', 'w3B', 'wHR'
-                         ,'runsSB', 'runCS'
-                         , 'r_pa', 'r_w', 'cFIP'
-                         ]
-            tbl = self.TBL_FGGUTS
-        elif type=='parkcode':
-            strKeys = ['parkid']
-            intKeys = ['altitude']
-            floatKeys = ['latitude', 'longitude']
-
-            tbl = self.TBL_RETRO_PARKCODE
+        if ev in outs_cds:
+            return 0.0
+        elif ev in ev2w:
+            return g[ev2w[ev]]
         else:
-            raise Exception
+            return None
 
-        keys = strKeys + intKeys + floatKeys
-        q = 'select '
-        
-        for k in keys[0:-1]:
-            q += ' %s , ' % k
-        k = keys[-1]
-        q += ' %s  ' % k
-        q += ' FROM %s ' % tbl 
 
-        if not criteria is None:
-            q += ' where ' + criteria
+###############
+    def computeValueAdded(self, minyr=1950, maxyr=2014, vbose=0):
+        ''' Compute the "Value Added" variables. 
 
-        print q
+        for games table:
+        - playoff_flag
+        - year_id
+        for events table:
+        - playoff_flag
+        - year_id
+        - time_since_1900 : an integer giving the number of seconds since Jan 1, 1900, UTC
+        - tto : times through the order
+        - sun_alt, sun_az : altitude and azimuth of the sun
+        - woba_pts : woba_pts for the event
+        - woba_pts_expected : placeholder for woba_pts expected from the matchup of batter vs pitcher. 
 
-        tmp = []
-        for k in strKeys:
-            this = (k, 'S64')
-            tmp.append(this)
-        for k in intKeys:
-            this = (k, 'i4')
-            tmp.append(this)
-        for k in floatKeys:
-            this = (k, 'f4')
-            tmp.append(this)
-        print 'dtype= ', tmp
-        dt = np.dtype(tmp)
+'''
 
-        self.cursor.execute(q)
-        rows = self.cursor.fetchall()
-        for row in rows:
-            tmp = []
-            for k in keys:
-                x = row[k]
-                if x is None:
-                    x = -1
-                tmp.append(x)
-            data.append(tuple(tmp))
-#        print data
-        data = np.array(data, dtype=dt)
-        return data
+        if self.guts is None:
+            self.guts = self.readFgGutsJson()
+            
+        if self.seamheads is None:
+            self.seamheads = self.getSeamheadsParksData()
+
+        aptz = {}
+        tzw = tzwhere.tzwhere()
+        sun = ephem.Sun()
+
+        aa_total_events = self.getEventCount()
+        pflags = {}
+
+
+        q = 'select a.*, b.event_id, b.event_cd, b.bat_id, b.pit_id, b.bat_lineup_id from (select game_id, start_game_tm, minutes_game_ct, park_id, daynight_park_cd, cast(substr(game_id, 4, 4) as unsigned) as year_id, cast(substr(game_id, 8, 2) as unsigned) as mn_id, cast(substr(game_id, 10, 2) as unsigned) as day_id from %s) a inner join %s b on a.game_id=b.game_id where a.year_id>=%d and a.year_id<=%d ' % (self.TABLE_NAMES['TBL_RETRO_GAMES'], self.TABLE_NAMES['TBL_RETRO_EVENTS'], minyr, maxyr)
+
+        if vbose>=1:
+            print q
+        data = self.sqlQueryToArray(q)
+
+        rdata = {}
+        rdata['TBL_RETRO_GAMES'] = []
+        rdata['TBL_RETRO_EVENTS'] = []
+        aTTO = {}
+        for d in data:
+            mval = {}        
+            if vbose>=1:
+                print d
+            gid = d['game_id']
+            pid = d['pit_id']
+            bl = d['bat_lineup_id']
+            ev_id = d['event_id']
+            ev_cd = d['event_cd']
+
+            yr = int(gid[3:3+4])
+            mn = int(gid[7:7+2])
+            dy = int(gid[9:9+2])
+
+            if not yr in pflags:
+                pflags[yr] = self.makePlayoffFlag(yr)['gids']
+
+            mval['year_id'] = yr
+            mval['playoff_flag'] = pflags[yr][gid]
+            
+            park = d['park_id']
+
+
+            lat = float(self.seamheads[park]['Latitude'])
+            lon = float(self.seamheads[park]['Longitude'])
+            elev = float(self.seamheads[park]['Altitude'])
+            if not park in aptz:
+                aptz[park] = tzw.tzNameAt(lat, lon)
+            tz = aptz[park]
+            tzi = pytz.timezone(tz)
+
+            dt = d['minutes_game_ct']
+            st = d['start_game_tm']
+
+            shrs = st/100
+            smins = st-100*(st/100)
+            if shrs<9:
+                shrs += 12
+
+            tstart = datetime.datetime(yr, mn, dy, shrs, smins, 0, 0)
+            x = datetime.timedelta(0,int(dt*60))
+            tend = tstart + x
+            dn = (1.0*dt)/aa_total_events[gid]
+
+            t0 = datetime.datetime(1900, 1, 1, 0, 0, 0)
+            t0 = tzi.localize(t0).astimezone(pytz.utc)
+            
+            if dt>0:
+                obs = ephem.Observer()
+                if vbose>=1:
+                    print 'dn', dn, 'ev_id', ev_id
+                x = datetime.timedelta(0,np.floor(dn*(ev_id-1)*60)) 
+                blah = tzi.localize(tstart + x).astimezone(pytz.utc)
+                obs.date = blah
+                sun.compute(obs)
+                x_1900 = (blah-t0).days*86400 + (blah-t0).seconds
+
+                obs.lat  = lat*self.deg2rad
+                obs.long = lon*self.deg2rad
+                obs.elev = elev
+                                
+                mval['sun_alt'] = float(sun.alt)*self.rad2deg
+                mval['sun_az'] = float(sun.az)*self.rad2deg
+                mval['time_since_1900'] = x_1900
+
+            k = '%s_%s' % (gid, pid)
+            if not k in aTTO:
+                aTTO[k] = {}
+            if not bl in aTTO[k]:
+                aTTO[k][bl] = 0
+            aTTO[k][bl] += 1
+            mval['tto'] = aTTO[k][bl]
+
+            if not gid in self.eventUpdateData:
+                self.eventUpdateData[gid] = {}
+            self.eventUpdateData[gid][ev_id] = {}
+            self.eventUpdateData[gid][ev_id]['tto'] = aTTO[k][bl]
+
+            woba_pts = self.getEventWoba(ev_cd, yr, vbose=vbose)
+            if not woba_pts is None:
+                self.eventUpdateData[gid][ev_id]['woba_pts'] = woba_pts
+                mval['woba_pts'] = woba_pts
+            if vbose>=1:
+                print gid, ev_id, ev_cd, yr, aTTO[k][bl],  aa_total_events[gid]
+            
+            tmp = {}
+
+            mval['game_id'] = gid
+            mval['event_id'] = ev_id
+            rdata['TBL_RETRO_GAMES'].append({'game_id' : mval['game_id'], 'playoff_flag' : mval['playoff_flag'], 'year_id' : mval['year_id']})
+            rdata['TBL_RETRO_EVENTS'].append(mval)
+
+        return rdata
+
+##########################
+    def writeSqlFile(self, rdata, ofile, n2print=10000):
+        ''' Writes the data in rdata to the file ofile. Prints every n2print-th value to stdout.
+        '''
+ 
+        ofp = open(ofile, 'w')
+
+        pks = ['game_id', 'event_id']
+
+        gdone = {}
+
+        for t in rdata.keys():
+            tname = self.TABLE_NAMES[t]
+            for i, r in enumerate(rdata[t]):
+                ts = 'UPDATE %s SET ' % tname
+                ks = r.keys()
+                for pk in pks:
+                    try:
+                        ks.remove(pk)
+                    except ValueError:
+                        pass
+
+                for k in ks[0:-1]:
+                    ts += ' %s=%s, ' % (k, str(r[k]))
+
+                k = ks[-1]
+                ts += ' %s=%s ' % (k, str(r[k]))
+            
+                if t=='TBL_RETRO_GAMES':
+                    ts += ' WHERE GAME_ID=%s' % r['game_id']
+                else:
+                    ts += ' WHERE GAME_ID=%s AND EVENT_ID=%d' % (r['game_id'], r['event_id'])
+
+                    
+                if t=='TBL_RETRO_GAMES':
+                    if r['game_id'] in gdone:
+                        continue
+                    else:
+                        ofp.write('%s ; \n' % ts)
+                        gdone[r['game_id']] = 1
+
+                else: 
+                    ofp.write('%s ; \n' % ts)
+
+                if i%n2print==0:
+                    print t, 'rdata', i, r
+    
+        ofp.close()
 
 ##########################
 if __name__=='__main__':
-    m = mlb()
-    m.makeCareer()
+
+    minyr = 2004
+    maxyr = 2004
+    vbose = 0
+    n2print = 10000
+    for ia, a in enumerate(sys.argv):
+        if a=='-minyr':
+            minyr = int(sys.argv[ia+1])
+        if a=='-maxyr':
+            maxyr = int(sys.argv[ia+1])
+        if a=='-vbose':
+            vbose = int(sys.argv[ia+1])
+        if a=='-n2print':
+            n2print = int(sys.argv[ia+1])
+            
+    now = datetime.datetime.now()
+    sdate = now.strftime('%Y%m%d%H%M%S%f')
+    ofile = 'VARD_%s.sql' % sdate
+
+    print 'initializing the retrosheet db connection...'
+    rs = retrosheet_sql()
+
+    print 'updateing schema...'
+    rs.updateSchema(vbose=vbose)
+
+    print 'computing the Value Added quantities...'
+    rdata = rs.computeValueAdded()
+
+    print 'writing output to %s...' % ofile
+    rs.writeSqlFile(rdata, ofile, n2print=n2print)
+
