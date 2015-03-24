@@ -280,8 +280,8 @@ class retrosheet_sql:
         all variables as double-precision. There is no automatic data-type 
         detection. Columns can be cast to specific data types with the 
         skeys (cast these columns as character arrays), ikeys (cast these 
-        columns as 4-bit integers), and fkeys (cast these columns as 
-        4-bit floats) parameters. These should be arrays of column names. 
+        columns as 4-byte integers), and fkeys (cast these columns as 
+        4-byte floats) parameters. These should be arrays of column names. 
         A 1-line header on the csv file is assumed.
         '''
         ifp = open(csvfile,'r')
