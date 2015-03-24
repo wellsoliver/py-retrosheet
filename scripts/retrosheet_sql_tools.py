@@ -38,8 +38,8 @@ It has two main purposes:
    -n2print n2print
 
    NOTE: This script will write out an sql file VARD_(TIMESTAMP).sql, 
-   which can then be sourced by your SQL implementaion (VARD stand for 
-   Value Added Retrosheet Database; the Value Added temrinology is a 
+   which can then be sourced by your SQL implementation (VARD stand for 
+   Value Added Retrosheet Database; the Value Added terminology is a 
    nod to my astronomy days, as in "Value Added Galaxy Catalog", 
    http://sdss.physics.nyu.edu/vagc/). It DOES NOT store any variables 
    to the database. It does update the schema, however, by adding columns 
@@ -81,7 +81,8 @@ class retrosheet_sql:
 
 ##########################
     def __init__(self, vbose=0, cfgFile=None):
-        ''' Some methiods to conveniently read data from retrosheet database and store as numpy arrays,
+        ''' Some methods to conveniently read data from retrosheet 
+        database and store as numpy arrays,
         and also some methods to add some useful quantities.
         '''
         self.vbose = vbose
@@ -164,7 +165,8 @@ class retrosheet_sql:
 
 ###############
     def updateSchema(self, vbose=0):
-        ''' Updates the retrosheet database tables with new "Value Added" variables'''
+        ''' Updates the retrosheet database tables with new 
+        "Value Added" variables'''
         qs = {}
         qs['TBL_RETRO_GAMES'] = {}
         qs['TBL_RETRO_GAMES']['YEAR_ID'] = 'int(4)'
@@ -206,7 +208,8 @@ class retrosheet_sql:
 
 ###############
     def resultToNpDtype(self, keys, row, vbose=0):
-        ''' Given a result row from a sql query, determine data type, and genberate a corresponding numpy.dtype object 
+        ''' Given a result row from a sql query, determine data type, 
+        and generate a corresponding numpy.dtype object 
         '''
         arr = []
         for i, k in enumerate(keys):
@@ -236,7 +239,10 @@ class retrosheet_sql:
 
 ###############
     def sqlQueryToArray(self, q, vbose=0):
-        ''' Given a sql query, execute the query, and return the results in a numpy array. The data type of each column automatically determined, and an appropriate numpy.dtype object is created and filled.
+        ''' Given a sql query, execute the query, and return the results 
+        in a numpy array. The data type of each column automatically 
+        determined, and an appropriate numpy.dtype object is created 
+        and filled.
         '''
         self.cursor.execute(q)
         rows = self.cursor.fetchall()
@@ -270,7 +276,13 @@ class retrosheet_sql:
 
 ###############
     def csvToArray(self, csvfile, skeys=[], ikeys=[], fkeys=[], delimiter=',', vbose=0):
-        ''' Read a csv file into a numpiy array. The default is to treat all variables as double-precision. There is no automatic data-type detection. Columns can be cast to specific data types with the skeys (cast these columns as character arrays), ikeys (cast these columns as 4-bit integers), and fkeys (cast these columns as 4-bit floats) parameters. These should be arrays of column names. A 1-line header on the csv file is assumed.
+        ''' Read a csv file into a numpy array. The default is to treat 
+        all variables as double-precision. There is no automatic data-type 
+        detection. Columns can be cast to specific data types with the 
+        skeys (cast these columns as character arrays), ikeys (cast these 
+        columns as 4-bit integers), and fkeys (cast these columns as 
+        4-bit floats) parameters. These should be arrays of column names. 
+        A 1-line header on the csv file is assumed.
         '''
         ifp = open(csvfile,'r')
         hd = ifp.next()
@@ -321,7 +333,11 @@ class retrosheet_sql:
                           lOBP=False, 
                           lGrouped = False,
                           vbose=False):
-        ''' Use the retrosheet events table to compute seasonal wOBA for a player, batter (lbat=True) or pitcher (lbat=False, in which case it's wOBA-against). This aggregates data for the named player and passes it on the lower-level method computeWoba. If the lOBP paramter is True, then it computes OBP rather than wOBA. 
+        ''' Use the retrosheet events table to compute seasonal wOBA for 
+        a player, batter (lbat=True) or pitcher (lbat=False, in which case 
+        it's wOBA-against). This aggregates data for the named player and 
+        passes it on the lower-level method computeWoba. If the lOBP parameter 
+        is True, then it computes OBP rather than wOBA. 
         '''
 
         if lbat:
@@ -344,7 +360,7 @@ class retrosheet_sql:
             print q
 
         self.cursor.execute(q)
-        rows = self.cursor.fetchall()
+        rows = self.sqlQueryToArray()
 
         if lGrouped:
             data = {}
@@ -367,7 +383,11 @@ class retrosheet_sql:
 ##########################
     def makePlayoffFlag(self, yrid, vbose=0):
 #        datetime.datetime.
-        ''' Use some heuristics to automatically determine which games are playoffs and which are regular season. Returns a dictionary. The key 'gids' has a vlaue which is a dictionary of game_id-playoff_flag pairs. playoff_flag is an integer, 0=reguklar season, 1=playoffs
+        ''' Use some heuristics to automatically determine which games 
+        are playoffs and which are regular season. Returns a dictionary. 
+        The key 'gids' has a value which is a dictionary of 
+        game_id-playoff_flag pairs. playoff_flag is an integer, 
+        0=regular season, 1=playoffs
         '''
         data = {}
 
@@ -470,7 +490,13 @@ class retrosheet_sql:
                     ,lGrouped=False
                     ,vbose=False):
 
-        ''' Given some data in the form of retrosheet event_cd, compute wOBA. The ibb parameter determines if IBB are included or ignored. lOBP determines whether to compute wOBA (lOBP=False) or OBP (lOBP=True). If lGrouped=True, it expects a dictionary of dictionary of event_cd-number pairs. Otherwise it just cycles through the keys of indata (which are the event_cd values) and adds up the wOBA points one at a time. Returns a tuple of wOBA_pts, PA, and wOBA=wOBA_pts/PA.
+        ''' Given some data in the form of retrosheet event_cd, compute wOBA. 
+        The ibb parameter determines if IBB are included or ignored. lOBP 
+        determines whether to compute wOBA (lOBP=False) or OBP (lOBP=True). 
+        If lGrouped=True, it expects a dictionary of dictionary of event_cd-number pairs. 
+        Otherwise it just cycles through the values of indata (which are 
+        the event_cd values) and adds up the wOBA points one at a time. 
+        Returns a tuple of wOBA_pts, PA, and wOBA=wOBA_pts/PA.
         '''
 
         wpts = 0.0
@@ -526,7 +552,8 @@ class retrosheet_sql:
 
 ###############
     def getEventCount(self, minyr=1950, maxyr=2014, vbose=0):
-        ''' Simple query to ind the max event_id for each game_id. This is useful for estimating time stamps.
+        ''' Simple query to find the max event_id for each game_id. 
+        This is useful for estimating time stamps.
         '''
         q = 'select game_id, max(event_id) as total_events from events group by game_id'
         dd = self.sqlQueryToArray(q)
@@ -701,7 +728,8 @@ class retrosheet_sql:
 
 ##########################
     def writeSqlFile(self, rdata, ofile, n2print=10000):
-        ''' Writes the data in rdata to the file ofile. Prints every n2print-th value to stdout.
+        ''' Writes the data in rdata to the file ofile. Prints every 
+        n2print-th value to stdout.
         '''
  
         ofp = open(ofile, 'w')
@@ -772,7 +800,7 @@ if __name__=='__main__':
     print 'initializing the retrosheet db connection...'
     rs = retrosheet_sql()
 
-    print 'updateing schema...'
+    print 'updating schema...'
     rs.updateSchema(vbose=vbose)
 
     print 'computing the Value Added quantities...'
