@@ -13,20 +13,23 @@ It has two main purposes:
   events
    - playoff_flag
    - year_id
-   - time_since_1900 : an integer giving the number of seconds since Jan 1, 1900, UTC
+   - time_since_1900 : an integer giving the number of seconds 
+                       since Jan 1, 1900, UTC
    - tto : times through the order
    - sun_alt, sun_az : altitude and azimuth of the sun
    - woba_pts : woba_pts for the event
-   - woba_pts_expected : placeholder for woba_pts expected from the matchup of batter vs pitcher. 
+   - woba_pts_expected : placeholder for woba_pts expected 
+                         from the matchup of batter vs pitcher. 
 
    the location of the sun computations require PyEphem
    http://rhodesmill.org/pyephem/
 
-   the time computations require timezone information, to translate everything to a common timezone (UTC)
+   the time computations require timezone information, 
+   to translate everything to a common timezone (UTC)
    pytz: http://pytz.sourceforge.net
    tzwhere: https://github.com/pegler/pytzwhere/tree/master/tzwhere
 
-   This file can be imported to get acces to the methods, or run via:
+   This file can be imported to get access to the methods, or run via:
    python retrosheet_sql_tools.py 
    with optional arguments 
    -minyr minyr 
@@ -34,22 +37,31 @@ It has two main purposes:
    -vbose vbose
    -n2print n2print
 
-   NOTE: This script will write out an sql file VARD_(TIMESTAMP).sql, which can then be sourced by your SQL implementaion (VARD stand for Value Added Retrosheet Database; the Value Added temrinology is a nod to my astronomy days, as in "Value Added Galaxy Catalog", http://sdss.physics.nyu.edu/vagc/). It DOES NOT store any variable to the database. It does update the schema, however, by adding columns for the computed variables.
+   NOTE: This script will write out an sql file VARD_(TIMESTAMP).sql, 
+   which can then be sourced by your SQL implementaion (VARD stand for 
+   Value Added Retrosheet Database; the Value Added temrinology is a 
+   nod to my astronomy days, as in "Value Added Galaxy Catalog", 
+   http://sdss.physics.nyu.edu/vagc/). It DOES NOT store any variables 
+   to the database. It does update the schema, however, by adding columns 
+   for the computed variables.
 
- ii. provides a method to read sql data into a numpy array, with automatic determination of variable type. The relevant method is sqlQueryToArray(query_string), which returns a numpy array of result of the query
+ ii. provides a method to read sql data into a numpy array, with automatic 
+     determination of variable type. The relevant method is 
+     sqlQueryToArray(query_string), 
+     which returns a numpy array of result of the query
 
- an example of use is 
-  import retrosheet_sql_tools
-  configFileLocation = 'config.ini'
-  minyr = 2004
-  maxyr = 2004
-  rs = retrosheet_sql_tools.retrosheet_sql(cfgFile=configFileLocation)
-  rs.updateSchema()
-  rs.computeValueAdded(minyr=minyr, maxyr=maxyr)
+  an example of use is 
+   import retrosheet_sql_tools
+   configFileLocation = 'config.ini'
+   minyr = 2004
+   maxyr = 2004
+   rs = retrosheet_sql_tools.retrosheet_sql(cfgFile=configFileLocation)
+   rs.updateSchema()
+   rs.computeValueAdded(minyr=minyr, maxyr=maxyr)
   
-  q = 'select tto, avg(woba_pts) as wo, avg(woba_pts_expected) as wx from retrosheet.events where year_id=2004 and woba_pts>=0 and pit_start_fl=\'T\' group by tto'
-  data = rs.sqlQueryToArray(q)
-  print data
+   q = 'select tto, avg(woba_pts) as wo, avg(woba_pts_expected) as wx from retrosheet.events where year_id=2004 and woba_pts>=0 and pit_start_fl=\'T\' group by tto'
+   data = rs.sqlQueryToArray(q)
+   print data
 
 '''
 
