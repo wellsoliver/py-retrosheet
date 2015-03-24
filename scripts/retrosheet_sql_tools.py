@@ -294,7 +294,7 @@ class retrosheet_sql:
             if k in ikeys:
                 s = (k, 'i4')
             elif k in fkeys:
-                s = (k, 'f8')
+                s = (k, 'f4')
             elif k in skeys:
                 s = (k, 'S256')
             else:
