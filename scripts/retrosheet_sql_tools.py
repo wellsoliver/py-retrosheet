@@ -493,7 +493,7 @@ class retrosheet_sql:
         ''' Given some data in the form of retrosheet event_cd, compute wOBA. 
         The ibb parameter determines if IBB are included or ignored. lOBP 
         determines whether to compute wOBA (lOBP=False) or OBP (lOBP=True). 
-        If lGrouped=True, it expects a dictionary of dictionary of event_cd-number pairs. 
+        If lGrouped=True, it expects a dictionary of event_cd-number pairs. 
         Otherwise it just cycles through the values of indata (which are 
         the event_cd values) and adds up the wOBA points one at a time. 
         Returns a tuple of wOBA_pts, PA, and wOBA=wOBA_pts/PA.
