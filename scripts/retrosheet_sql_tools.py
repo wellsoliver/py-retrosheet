@@ -76,6 +76,7 @@ import ephem
 import pytz
 from tzwhere import tzwhere
 
+bump = 1
 
 class retrosheet_sql:
 
