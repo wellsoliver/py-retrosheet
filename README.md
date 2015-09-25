@@ -17,6 +17,12 @@ YE REQUIREMENTS
 USAGE
 -----
 
+### Setup
+
+    cp scripts/config.ini.dist scripts/config.ini
+
+Edit `scripts/config.ini` as needed.  See the steps below for what might need to be changed.
+
 ### Download
 
     python download.py [-y <4-digit-year> | --year <4-digit-year>]
