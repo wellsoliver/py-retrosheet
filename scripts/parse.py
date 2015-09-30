@@ -72,6 +72,9 @@ def parse_teams(file, conn, bound_param):
 
     reader = csv.reader(open(file))
     for row in reader:
+        if len(row) != 4:
+            continue
+
         sql = 'SELECT * FROM teams WHERE team_id = %s'
         res = conn.execute(sql, [row[0]])
         
