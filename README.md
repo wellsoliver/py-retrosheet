@@ -12,7 +12,7 @@ YE REQUIREMENTS
 
 - sqlalchemy: http://www.sqlalchemy.org/
 
-- [if using postgres] pyscopg2 python package (dependency for sqlalchemy)
+- [if using postgres] psycopg2 python package (dependency for sqlalchemy)
 
 USAGE
 -----
