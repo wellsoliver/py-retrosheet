@@ -1,0 +1,2 @@
+requests==2.8.1
+SQLAlchemy==1.0.8
