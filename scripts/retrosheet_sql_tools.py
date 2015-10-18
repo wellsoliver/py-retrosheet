@@ -67,8 +67,8 @@ It has two main purposes:
 
 import json
 import sqlalchemy
-import ConfigParser
-import os, sys
+import configparser
+import sys
 import datetime
 import decimal
 import numpy as np
@@ -77,6 +77,7 @@ import pytz
 from tzwhere import tzwhere
 
 bump = 1
+
 
 class retrosheet_sql:
 
@@ -96,7 +97,7 @@ class retrosheet_sql:
 #        self.guts = self.readFgGutsJson()
 
         # read the database configuration, and make a connection
-        config = ConfigParser.ConfigParser()
+        config = configparser.ConfigParser()
         if cfgFile is None:
             config.readfp(open('config.ini'))
         else:
@@ -104,8 +105,8 @@ class retrosheet_sql:
 
         try:
             self.conn = self.dbConnect(config)
-        except Exception, e:
-            print('Cannot connect to database: %s' % e)
+        except Exception as e:
+            print(('Cannot connect to database: %s' % e))
             raise SystemExit
 
         self.config=config
@@ -130,7 +131,7 @@ class retrosheet_sql:
 
 ##########################
     def __str__(self):
-        print self.config
+        print(self.config)
         return ''
 
 ###############
@@ -145,8 +146,8 @@ class retrosheet_sql:
             USER = None if not config.has_option('database', 'user') else config.get('database', 'user')
             SCHEMA = None if not config.has_option('database', 'schema') else config.get('database', 'schema')
             PASSWORD = None if not config.has_option('database', 'password') else config.get('database', 'password')
-        except ConfigParser.NoOptionError:
-            print 'Need to define engine, user, password, host, and database parameters'
+        except configparser.NoOptionError:
+            print('Need to define engine, user, password, host, and database parameters')
             raise SystemExit
 
         if ENGINE == 'sqlite':
@@ -188,13 +189,13 @@ class retrosheet_sql:
             for c in qs[t]:
                 q = 'alter table %s add column %s %s ' % (self.TABLE_NAMES[t], c, qs[t][c])
                 if vbose>=1:
-                    print q
+                    print(q)
                 try:
                     self.cursor.execute(q)
 #                    self.conn.commit()
-                except self.cursor.Error, e:
+                except self.cursor.Error as e:
                     if vbose>=1:
-                        print 'Warning: ' , e
+                        print('Warning: ' , e)
                     pass
 
 
@@ -216,10 +217,10 @@ class retrosheet_sql:
         for i, k in enumerate(keys):
             x = row[i]
             if vbose>=1:
-                print k, x, type(x)
+                print(k, x, type(x))
             if type(x)==type(1):
                 s = (k, 'i4')
-            elif type(x)==type(1L):
+            elif type(x)==type(1):
                 s = (k, 'i8')
             elif type(x)==type(decimal.Decimal(1)):
                 s = (k, 'f8')
@@ -231,7 +232,7 @@ class retrosheet_sql:
 
         dt = np.dtype(arr)
         if vbose>=1:
-            print 'dtype', arr, dt
+            print('dtype', arr, dt)
         return dt
 
 ###############
@@ -260,15 +261,15 @@ class retrosheet_sql:
         for row in rows:
             tmp = []
             if vbose>=1:
-                print '********************'
+                print('********************')
             for i, k in enumerate(keys):
                 x = row[i]
                 if vbose>=1:
-                    print k, row[i]
+                    print(k, row[i])
                 tmp.append(x)
             data.append(tuple(tmp))
         if vbose>=1:
-            print data
+            print(data)
         return np.array(data, dtype=dt)
 
 ###############
@@ -286,7 +287,7 @@ class retrosheet_sql:
         A 1-line header on the csv file is assumed.
         '''
         ifp = open(csvfile,'r')
-        hd = ifp.next()
+        hd = next(ifp)
         ifp.close()
         keys = hd.split('%s' % delimiter)
         arr = []
@@ -302,7 +303,7 @@ class retrosheet_sql:
                 s = (k, 'f8')
 
             if vbose>=1:
-                print 'k', k, 's', s
+                print('k', k, 's', s)
 
             arr.append(s)
 #        print arr
@@ -315,14 +316,14 @@ class retrosheet_sql:
             tmp.sort()
             
             
-            print 'dt arr',arr
-            print 'dt arr', tmp
-            print len(tmp), len(np.unique(tmp))
-            print 'dt arr u', np.unique(tmp)
+            print('dt arr',arr)
+            print('dt arr', tmp)
+            print(len(tmp), len(np.unique(tmp)))
+            print('dt arr u', np.unique(tmp))
             sys.exit()
 
         if vbose>=1:
-            print dt
+            print(dt)
         return np.genfromtxt(csvfile, skip_header=1, delimiter=delimiter, dtype=dt)
 
 
@@ -358,7 +359,7 @@ class retrosheet_sql:
             q += ' group by %s ' % 'event_cd'
 
         if vbose:
-            print q
+            print(q)
 
         self.cursor.execute(q)
         rows = self.sqlQueryToArray()
@@ -370,7 +371,7 @@ class retrosheet_sql:
 
         for row in rows:
             if vbose:
-                print row
+                print(row)
             if lGrouped:
                 data[int(row['event_cd'])] = int(row['n'])
             else:
@@ -408,7 +409,7 @@ class retrosheet_sql:
                 data[t]['gid'].append(row['game_id'])
 
         if vbose>=1:
-            print 'data', data
+            print('data', data)
 
         for k in data:
             tmp.append(data[k]['ngame'])
@@ -416,8 +417,8 @@ class retrosheet_sql:
         mm = int(np.median(tmp))
 
         if vbose>=1:
-            print '*************'
-            print yrid, mm
+            print('*************')
+            print(yrid, mm)
 
         max_time = -1
         for k in data:
@@ -435,9 +436,9 @@ class retrosheet_sql:
                 max_time=ttI
             newtt = datetime.datetime.fromordinal(ttI)
             if vbose>=1:
-                print k, data[k]['gid'][-1], ttI, \
+                print(k, data[k]['gid'][-1], ttI, \
                     datetime.datetime.fromordinal(ttI), \
-                    newtt.year, newtt.month, newtt.day
+                    newtt.year, newtt.month, newtt.day)
 
         hack = {}
         hack[1950] = [10, 4]
@@ -470,11 +471,11 @@ class retrosheet_sql:
                 ndata['gids'][gid] = pflag
 
         if vbose>=1:
-            print ndata
+            print(ndata)
         ndata['mm'] = mm
 
         if vbose>=1:
-            print yr, max_time
+            print(yr, max_time)
         newtt = datetime.datetime.fromordinal(max_time)
         ndata['newtt'] = newtt
         ndata['max_time'] = max_time
@@ -505,13 +506,13 @@ class retrosheet_sql:
 
         ww = {}
         row = self.guts[str('yrid')]
-        for k in row.keys():
+        for k in list(row.keys()):
             if lOBP:
                 ww[k] = 1.0
             else:
                 ww[k] = row[k]
         if vbose:
-            print 'wOBA (OBP) weights: ' , ww
+            print('wOBA (OBP) weights: ' , ww)
 
         for ev in indata:
             if lGrouped:
@@ -520,7 +521,7 @@ class retrosheet_sql:
                 val = 1.0
 
             if vbose:
-                print ev, val
+                print(ev, val)
             if ev in [2,3]:
                 pa += val
             elif ev in [14]:
@@ -626,7 +627,7 @@ class retrosheet_sql:
         q = 'select a.*, b.event_id, b.event_cd, b.bat_id, b.pit_id, b.bat_lineup_id from (select game_id, start_game_tm, minutes_game_ct, park_id, daynight_park_cd, cast(substr(game_id, 4, 4) as unsigned) as year_id, cast(substr(game_id, 8, 2) as unsigned) as mn_id, cast(substr(game_id, 10, 2) as unsigned) as day_id from %s) a inner join %s b on a.game_id=b.game_id where a.year_id>=%d and a.year_id<=%d ' % (self.TABLE_NAMES['TBL_RETRO_GAMES'], self.TABLE_NAMES['TBL_RETRO_EVENTS'], minyr, maxyr)
 
         if vbose>=1:
-            print q
+            print(q)
         data = self.sqlQueryToArray(q)
 
         rdata = {}
@@ -636,7 +637,7 @@ class retrosheet_sql:
         for d in data:
             mval = {}        
             if vbose>=1:
-                print d
+                print(d)
             gid = d['game_id']
             pid = d['pit_id']
             bl = d['bat_lineup_id']
@@ -683,7 +684,7 @@ class retrosheet_sql:
             if dt>0:
                 obs = ephem.Observer()
                 if vbose>=1:
-                    print 'dn', dn, 'ev_id', ev_id
+                    print('dn', dn, 'ev_id', ev_id)
                 x = datetime.timedelta(0,np.floor(dn*(ev_id-1)*60)) 
                 blah = tzi.localize(tstart + x).astimezone(pytz.utc)
                 obs.date = blah
@@ -716,7 +717,7 @@ class retrosheet_sql:
                 self.eventUpdateData[gid][ev_id]['woba_pts'] = woba_pts
                 mval['woba_pts'] = woba_pts
             if vbose>=1:
-                print gid, ev_id, ev_cd, yr, aTTO[k][bl],  aa_total_events[gid]
+                print(gid, ev_id, ev_cd, yr, aTTO[k][bl],  aa_total_events[gid])
             
             tmp = {}
 
@@ -739,11 +740,11 @@ class retrosheet_sql:
 
         gdone = {}
 
-        for t in rdata.keys():
+        for t in list(rdata.keys()):
             tname = self.TABLE_NAMES[t]
             for i, r in enumerate(rdata[t]):
                 ts = 'UPDATE %s SET ' % tname
-                ks = r.keys()
+                ks = list(r.keys())
                 for pk in pks:
                     try:
                         ks.remove(pk)
@@ -773,7 +774,7 @@ class retrosheet_sql:
                     ofp.write('%s ; \n' % ts)
 
                 if i%n2print==0:
-                    print t, 'rdata', i, r
+                    print(t, 'rdata', i, r)
     
         ofp.close()
 
@@ -798,15 +799,15 @@ if __name__=='__main__':
     sdate = now.strftime('%Y%m%d%H%M%S%f')
     ofile = 'VARD_%s.sql' % sdate
 
-    print 'initializing the retrosheet db connection...'
+    print('initializing the retrosheet db connection...')
     rs = retrosheet_sql()
 
-    print 'updating schema...'
+    print('updating schema...')
     rs.updateSchema(vbose=vbose)
 
-    print 'computing the Value Added quantities...'
+    print('computing the Value Added quantities...')
     rdata = rs.computeValueAdded()
 
-    print 'writing output to %s...' % ofile
+    print('writing output to %s...' % ofile)
     rs.writeSqlFile(rdata, ofile, n2print=n2print)
 
