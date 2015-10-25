@@ -193,7 +193,7 @@ class retrosheet_sql:
                 try:
                     self.cursor.execute(q)
 #                    self.conn.commit()
-                except self.cursor.Error as e:
+                except Exception as e:
                     if vbose>=1:
                         print('Warning: ' , e)
                     pass
