@@ -1,6 +1,11 @@
 import os
 import subprocess
-from configparser import ConfigParser, NoOptionError
+try:
+    # Python 3.x
+    from configparser import ConfigParser, NoOptionError
+except ImportError:
+    # Python 2.x
+    from ConfigParser import ConfigParser, NoOptionError
 import sqlalchemy
 import csv
 import glob

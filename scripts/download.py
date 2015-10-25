@@ -1,7 +1,14 @@
 import os
 import requests
-from configparser import ConfigParser
-import queue
+try:
+    # Python 3.x
+    from configparser import ConfigParser
+    import queue
+except ImportError:
+    # Python 2.x
+    from ConfigParser import ConfigParser
+    import Queue as queue
+
 import re
 import getopt
 import sys
