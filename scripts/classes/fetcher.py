@@ -1,9 +1,13 @@
-import urllib.request
-import urllib.parse
-import urllib.error
 import os
 import threading
-import queue
+try:
+    # Python 3.x
+    from urllib.request import urlretrieve
+    import queue
+except ImportError:
+    # Python 2.x
+    import Queue as queue
+    from urllib import urlretrieve
 import zipfile
 
 
@@ -38,15 +42,13 @@ class Fetcher(threading.Thread):
             f = "%s/%s" % (self.path, filename)
             
             # save file
-            urllib.request.urlretrieve(url, f)
+            urlretrieve(url, f)
 
             # is this a zip file?
             if (zipfile.is_zipfile(f)):
-            
                 #log
                 if(self.options['verbose']):
                     print("Zip file detected. Extracting " + filename)
-                
                 # extract the zip file
                 zip = zipfile.ZipFile(f, "r")
                 zip.extractall(self.path)
