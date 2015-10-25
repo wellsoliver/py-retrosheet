@@ -67,7 +67,8 @@ It has two main purposes:
 
 import json
 import sqlalchemy
-import configparser
+from configparser import ConfigParser
+from configparser import NoOptionError
 import sys
 import datetime
 import decimal
@@ -97,11 +98,11 @@ class retrosheet_sql:
 #        self.guts = self.readFgGutsJson()
 
         # read the database configuration, and make a connection
-        config = configparser.ConfigParser()
+        config = ConfigParser()
         if cfgFile is None:
-            config.readfp(open('config.ini'))
+            config.read('config.ini')
         else:
-            config.readfp(open(cfgFile))
+            config.read(cfgFile)
 
         try:
             self.conn = self.dbConnect(config)
@@ -109,7 +110,7 @@ class retrosheet_sql:
             print(('Cannot connect to database: %s' % e))
             raise SystemExit
 
-        self.config=config
+        self.config = config
         self.mysql_db = config.get('database', 'database')
 
         self.cursor = self.conn.connection.cursor()
@@ -144,9 +145,8 @@ class retrosheet_sql:
             
             HOST = None if not config.has_option('database', 'host') else config.get('database', 'host')
             USER = None if not config.has_option('database', 'user') else config.get('database', 'user')
-            SCHEMA = None if not config.has_option('database', 'schema') else config.get('database', 'schema')
             PASSWORD = None if not config.has_option('database', 'password') else config.get('database', 'password')
-        except configparser.NoOptionError:
+        except NoOptionError:
             print('Need to define engine, user, password, host, and database parameters')
             raise SystemExit
 
