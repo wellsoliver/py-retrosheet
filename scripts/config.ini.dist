@@ -26,3 +26,6 @@ gamelogs_url = http://www.retrosheet.org/gamelogs/index.html
 
 [debug]
 verbose = True
+
+[content]
+charset=UTF-8

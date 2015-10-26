@@ -608,7 +608,8 @@ class retrosheet_sql:
         - woba_pts : woba_pts for the event
         - woba_pts_expected : placeholder for woba_pts expected from the matchup of batter vs pitcher. 
 
-'''
+        '''
+        charset = self.config.get('content', 'charset')
 
         if self.guts is None:
             self.guts = self.readFgGutsJson()
@@ -654,12 +655,13 @@ class retrosheet_sql:
             mval['year_id'] = yr
             mval['playoff_flag'] = pflags[yr][gid]
             
-            park = d['park_id']
+            park = d['park_id'].decode(charset)
 
 
             lat = float(self.seamheads[park]['Latitude'])
             lon = float(self.seamheads[park]['Longitude'])
             elev = float(self.seamheads[park]['Altitude'])
+
             if not park in aptz:
                 aptz[park] = tzw.tzNameAt(lat, lon)
             tz = aptz[park]
@@ -673,7 +675,7 @@ class retrosheet_sql:
             if shrs<9:
                 shrs += 12
 
-            tstart = datetime.datetime(yr, mn, dy, shrs, smins, 0, 0)
+            tstart = datetime.datetime(yr, mn, dy, int(shrs), int(smins), 0, 0)
             x = datetime.timedelta(0,int(dt*60))
             tend = tstart + x
             dn = (1.0*dt)/aa_total_events[gid]
@@ -721,7 +723,7 @@ class retrosheet_sql:
             
             tmp = {}
 
-            mval['game_id'] = gid
+            mval['game_id'] = gid.decode(charset)
             mval['event_id'] = ev_id
             rdata['TBL_RETRO_GAMES'].append({'game_id' : mval['game_id'], 'playoff_flag' : mval['playoff_flag'], 'year_id' : mval['year_id']})
             rdata['TBL_RETRO_EVENTS'].append(mval)
@@ -758,9 +760,9 @@ class retrosheet_sql:
                 ts += ' %s=%s ' % (k, str(r[k]))
             
                 if t=='TBL_RETRO_GAMES':
-                    ts += ' WHERE GAME_ID=%s' % r['game_id']
+                    ts += ' WHERE GAME_ID="%s"' % r['game_id']
                 else:
-                    ts += ' WHERE GAME_ID=%s AND EVENT_ID=%d' % (r['game_id'], r['event_id'])
+                    ts += ' WHERE GAME_ID="%s" AND EVENT_ID=%d' % (r['game_id'], r['event_id'])
 
                     
                 if t=='TBL_RETRO_GAMES':
