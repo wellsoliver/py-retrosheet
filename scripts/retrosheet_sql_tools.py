@@ -67,8 +67,13 @@ It has two main purposes:
 
 import json
 import sqlalchemy
-from configparser import ConfigParser
-from configparser import NoOptionError
+try:
+    # Python 3.x
+    from configparser import ConfigParser, NoOptionError
+except ImportError:
+    # Python 2.x
+    from ConfigParser import ConfigParser, NoOptionError
+
 import sys
 import datetime
 import decimal
@@ -237,7 +242,7 @@ class retrosheet_sql:
 
 ###############
     def descriptToKeys(self):
-        return [d[0] for d in self.cursor.description]
+        return [str(d[0]) for d in self.cursor.description]
 
 ###############
     def sqlQueryToArray(self, q, vbose=0):
