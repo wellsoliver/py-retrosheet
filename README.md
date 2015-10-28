@@ -8,7 +8,7 @@ YE REQUIREMENTS
 
 - Chadwick 0.6.2 http://chadwick.sourceforge.net/
 
-- python 2.5+ (don't know about 3.0, sorry)
+- python 2.5+ , python 3.4+
 
 - sqlalchemy: http://www.sqlalchemy.org/
 
