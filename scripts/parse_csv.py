@@ -12,17 +12,6 @@ from configparser import ConfigParser
 __author__ = 'Shinichi Nakagawa'
 
 
-class ParseCsvConfig(object):
-
-    CSV_PATH = '{path}/csv'
-    MODULES = (
-        'teams',
-        'rosters',
-        'events',
-        'games'
-    )
-
-
 class ParseCsv(object):
 
     CW_EVENT = '{chadwick_path}cwevent'
@@ -77,17 +66,56 @@ class ParseCsv(object):
             print('calling {cmd}'.format(cmd=cmd))
         subprocess.call(cmd, shell=True)
 
+    @classmethod
+    def generate_retrosheet_files(
+            cls,
+            from_year: int,
+            to_year: int,
+            chadwick_path: str,
+            verbose: str,
+            csvpath: str
+    ):
+        """
+        Generate CSV file
+        :param from_year: Season(from)
+        :param to_year: Season(to)
+        :param chadwick_path: Chadwick Command Path
+        :param verbose: Debug flg
+        :param csvpath: csv output path
+        """
+        # generate files
+        for year in [year for year in range(from_year, to_year + 1)]:
+            # game
+            ParseCsv.generate_files(
+                year=year,
+                cmd_format=ParseCsv.CW_GAME_CMD,
+                filename_format=ParseCsv.GAME_FILE,
+                chadwick_path=chadwick_path,
+                verbose=verbose,
+                csvpath=csvpath
+            )
+            # event
+            ParseCsv.generate_files(
+                year=year,
+                cmd_format=ParseCsv.CW_EVENT_CMD,
+                filename_format=ParseCsv.EVENT_FILE,
+                chadwick_path=chadwick_path,
+                verbose=verbose,
+                csvpath=csvpath
+            )
+
 
 @click.command()
 @click.option('--from_year', '-f', default=2001, help='From Season')
 @click.option('--to_year', '-t', default=2014, help='To Season')
 @click.option('--configfile', '-c', default='config.ini', help='Config File')
-def main(from_year, to_year, configfile):
+def create_retrosheet_csv(from_year, to_year, configfile):
     """
     :param from_year: Season(from)
     :param to_year: Season(to)
     :param configfile: Config file
     """
+    # from <= to check
     if from_year > to_year:
         print('not From <= To({from_year} <= {to_year})'.format(from_year=from_year, to_year=to_year))
         raise SystemExit
@@ -97,7 +125,7 @@ def main(from_year, to_year, configfile):
     verbose = config.get('debug', 'verbose')
     chadwick = config.get('chadwick', 'directory')
     path = os.path.abspath(config.get('download', 'directory'))
-    csvpath = ParseCsvConfig.CSV_PATH.format(path=path)
+    csvpath = '{path}/csv'.format(path=path)
 
     # command exists check
     if not ParseCsv.exists_chadwick(chadwick):
@@ -110,26 +138,14 @@ def main(from_year, to_year, configfile):
         os.makedirs(ParseCsv.CSV_PATH)
 
     # generate files
-    for year in [year for year in range(from_year, to_year + 1)]:
-        # game
-        ParseCsv.generate_files(
-            year=year,
-            cmd_format=ParseCsv.CW_GAME_CMD,
-            filename_format=ParseCsv.GAME_FILE,
-            chadwick_path=chadwick,
-            verbose=verbose,
-            csvpath=csvpath
-        )
-        # event
-        ParseCsv.generate_files(
-            year=year,
-            cmd_format=ParseCsv.CW_EVENT_CMD,
-            filename_format=ParseCsv.EVENT_FILE,
-            chadwick_path=chadwick,
-            verbose=verbose,
-            csvpath=csvpath
-        )
+    ParseCsv.generate_retrosheet_files(
+        from_year=from_year,
+        to_year=to_year,
+        chadwick_path=chadwick,
+        verbose=verbose,
+        csvpath=csvpath
+    )
 
 
 if __name__ == '__main__':
-    main()
+    create_retrosheet_csv()
