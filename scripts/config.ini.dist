@@ -29,3 +29,7 @@ verbose = True
 
 [content]
 charset=UTF-8
+
+[retrosheet_mysql]
+record_check=False
+multiple_insert_rows=1000
