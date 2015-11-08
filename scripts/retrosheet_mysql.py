@@ -123,9 +123,7 @@ class RetrosheetMySql(object):
             self.connection.execute(sql)
         except Exception as e:
             print(e)
-            print(sql)
             raise SystemExit
-
 
     def _create_record(self, year: int, csv_file: str, table: dict):
         reader = csv.reader(open(csv_file))
@@ -157,10 +155,8 @@ class RetrosheetMySql(object):
     @classmethod
     def run(cls, from_year: int, to_year: int, configfile: str):
         client = RetrosheetMySql(configfile)
-        # TODO ここはマルチプロセス化するかも
         for year in [year for year in range(from_year, to_year + 1)]:
             client.execute(year)
-        # TODO ここまでマルチプロセス化
         client.connection.close()
 
 
