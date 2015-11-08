@@ -155,7 +155,7 @@ class RetrosheetMySql(object):
     @classmethod
     def run(cls, from_year: int, to_year: int, configfile: str):
         client = RetrosheetMySql(configfile)
-        for year in [year for year in range(from_year, to_year + 1)]:
+        for year in range(from_year, to_year + 1):
             client.execute(year)
         client.connection.close()
 
