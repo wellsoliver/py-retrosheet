@@ -154,6 +154,11 @@ class RetrosheetMySql(object):
 
     @classmethod
     def run(cls, from_year: int, to_year: int, configfile: str):
+        """
+        :param from_year: Season(from)
+        :param to_year: Season(to)
+        :param configfile: Config file
+        """
         client = RetrosheetMySql(configfile)
         for year in range(from_year, to_year + 1):
             client.execute(year)

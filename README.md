@@ -55,6 +55,26 @@ After the files have been downloaded, parse them into SQL with `parse.py`.
     
 5. Run `parse.py` to parse the files and insert the data into the database. (optionally use `-y YYYY` to import just one year)
 
+USAGE(Python 3.5.0 & MySQL 5.6+ Only)
+-----
+
+### Download
+
+    python retrosheet_download.py [-f <from 4-digit-year>] [-t <to 4-digit-year>] [-c <config.ini path>]
+
+### Parse
+
+    python parse_csv.py [-f <from 4-digit-year>] [-t <to 4-digit-year>] [-c <config.ini path>]
+
+### Into SQL
+
+    python retrosheet_mysql.py [-f <from 4-digit-year>] [-t <to 4-digit-year>] [-c <config.ini path>]
+
+### Migration(Download - Parse - Into SQL)
+
+    python migration.py [-f <from 4-digit-year>] [-t <to 4-digit-year>] [-c <config.ini path>]
+
+
 YE GRATITUDE
 ------------
 
