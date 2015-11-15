@@ -137,6 +137,9 @@ class ParseCsv(object):
             csvpath=csv_path
         )
 
+        # change directory
+        os.chdir(os.path.dirname(os.path.abspath(__file__)))
+
 
 @click.command()
 @click.option('--from_year', '-f', default=2001, help='From Season')
