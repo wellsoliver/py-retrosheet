@@ -47,6 +47,12 @@ class RetrosheetDownload(object):
         self.absolute_path = os.path.abspath(self.path)
 
     def download(self, queue):
+        """
+        Download & a Archives
+        :param from_year: Season(from)
+        :param to_year: Season(to)
+        :param configfile: Config file
+        """
         threads = []
         for i in range(self.num_threads):
             t = Fetcher(queue, self.absolute_path, {'verbose': self.config.get('debug', 'verbose')})
@@ -55,10 +61,19 @@ class RetrosheetDownload(object):
         for thread in threads:
             thread.join()
 
-
     @classmethod
     def run(cls, from_year: int, to_year: int, configfile: str):
+        """
+        :param from_year: Season(from)
+        :param to_year: Season(to)
+        :param configfile: Config file
+        """
         client = RetrosheetDownload(configfile)
+
+        if not os.path.exists(client.absolute_path):
+            print("Directory %s does not exist, creating..." % client.absolute_path)
+            os.makedirs(client.absolute_path)
+
         urls = Queue()
         for year in range(from_year, to_year + 1):
             for _file in RetrosheetDownload.FILES:

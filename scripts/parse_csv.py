@@ -46,7 +46,7 @@ class ParseCsv(object):
             cmd_format: str,
             filename_format: str,
             chadwick_path: str,
-            verbose: str,
+            verbose: bool,
             csvpath: str
     ):
         """
@@ -62,7 +62,7 @@ class ParseCsv(object):
         filename = filename_format.format(csvpath=csvpath, year=year)
         if os.path.isfile(filename):
             os.remove(filename)
-        if(verbose):
+        if verbose:
             print('calling {cmd}'.format(cmd=cmd))
         subprocess.call(cmd, shell=True)
 
@@ -104,6 +104,39 @@ class ParseCsv(object):
                 csvpath=csvpath
             )
 
+    @classmethod
+    def run(cls, from_year: int, to_year: int, configfile: str):
+        """
+        :param from_year: Season(from)
+        :param to_year: Season(to)
+        :param configfile: Config file
+        """
+        config = ConfigParser()
+        config.read(configfile)
+        verbose = config.getboolean('debug', 'verbose')
+        chadwick = config.get('chadwick', 'directory')
+        path = os.path.abspath(config.get('download', 'directory'))
+        csv_path = '{path}/csv'.format(path=path)
+
+        # command exists check
+        if not cls.exists_chadwick(chadwick):
+            print('chadwick does not exist in {chadwick} - exiting'.format(chadwick=chadwick))
+            raise SystemExit
+
+        # make directory
+        os.chdir(path)
+        if not os.path.exists(ParseCsv.CSV_PATH):
+            os.makedirs(ParseCsv.CSV_PATH)
+
+        # generate files
+        cls.generate_retrosheet_files(
+            from_year=from_year,
+            to_year=to_year,
+            chadwick_path=chadwick,
+            verbose=verbose,
+            csvpath=csv_path
+        )
+
 
 @click.command()
 @click.option('--from_year', '-f', default=2001, help='From Season')
@@ -119,32 +152,7 @@ def create_retrosheet_csv(from_year, to_year, configfile):
     if from_year > to_year:
         print('not From <= To({from_year} <= {to_year})'.format(from_year=from_year, to_year=to_year))
         raise SystemExit
-
-    config = ConfigParser()
-    config.read(configfile)
-    verbose = config.get('debug', 'verbose')
-    chadwick = config.get('chadwick', 'directory')
-    path = os.path.abspath(config.get('download', 'directory'))
-    csvpath = '{path}/csv'.format(path=path)
-
-    # command exists check
-    if not ParseCsv.exists_chadwick(chadwick):
-        print('chadwick does not exist in {chadwick} - exiting'.format(chadwick=chadwick))
-        raise SystemExit
-
-    # make directory
-    os.chdir(path)
-    if not os.path.exists(ParseCsv.CSV_PATH):
-        os.makedirs(ParseCsv.CSV_PATH)
-
-    # generate files
-    ParseCsv.generate_retrosheet_files(
-        from_year=from_year,
-        to_year=to_year,
-        chadwick_path=chadwick,
-        verbose=verbose,
-        csvpath=csvpath
-    )
+    ParseCsv.run(from_year, to_year, configfile)
 
 
 if __name__ == '__main__':
