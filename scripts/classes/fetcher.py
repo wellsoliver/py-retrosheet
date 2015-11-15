@@ -1,5 +1,6 @@
 import os
 import threading
+from distutils.util import strtobool
 try:
     # Python 3.x
     from urllib.request import urlretrieve
@@ -13,11 +14,11 @@ import zipfile
 
 class Fetcher(threading.Thread):
 
-    def __init__(self, queue, path, options):
+    def __init__(self, q, path, options):
         threading.Thread.__init__(self)
-        self.queue = queue
+        self.q = q
         self.path = path
-        self.options = options
+        self.verbose = strtobool(options['verbose'])
 
     def run(self):
     
@@ -27,7 +28,7 @@ class Fetcher(threading.Thread):
             # grab something from the queue
             # exit if queue empty
             try:
-                url = self.queue.get_nowait()
+                url = self.q.get_nowait()
             except queue.Empty:
                 break
 
@@ -35,7 +36,7 @@ class Fetcher(threading.Thread):
             filename = os.path.basename(url)
 
             # log
-            if(self.options['verbose']):
+            if self.verbose:
                 print("Fetching " + filename)
 
             # determine the local path
@@ -45,9 +46,9 @@ class Fetcher(threading.Thread):
             urlretrieve(url, f)
 
             # is this a zip file?
-            if (zipfile.is_zipfile(f)):
-                #log
-                if(self.options['verbose']):
+            if zipfile.is_zipfile(f):
+                # log
+                if self.verbose:
                     print("Zip file detected. Extracting " + filename)
                 # extract the zip file
                 zip = zipfile.ZipFile(f, "r")
