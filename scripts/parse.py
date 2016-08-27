@@ -149,7 +149,7 @@ def main():
         raise SystemExit
     
     useyear     = False # Use a single year or all years
-    verbose     = config.get('debug', 'verbose')
+    verbose     = config.getboolean('debug', 'verbose')
     chadwick    = config.get('chadwick', 'directory')
     path        = os.path.abspath(config.get('download', 'directory'))
     csvpath     = '%s/csv' % path

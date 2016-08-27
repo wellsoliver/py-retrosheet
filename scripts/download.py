@@ -20,7 +20,7 @@ num_threads = config.getint('download', 'num_threads')
 # load settings into separate var
 # can this be replaced by config var in the future?
 options = {}
-options['verbose'] = config.get('debug', 'verbose')
+options['verbose'] = config.getboolean('debug', 'verbose')
 
 # load and evaluate download directory
 path = config.get('download', 'directory')
@@ -51,7 +51,7 @@ for o, a in opts:
 # Queue Event Files for Download #
 ##################################
 
-if config.get('download', 'dl_eventfiles'):
+if config.getboolean('download', 'dl_eventfiles'):
 
     # log next action
     if YEAR:
@@ -78,7 +78,7 @@ if config.get('download', 'dl_eventfiles'):
 # Queue Game Logs for Download #
 #################################
 
-if config.get('download', 'dl_gamelogs'):
+if config.getboolean('download', 'dl_gamelogs'):
 
     # log next action
     if YEAR:
