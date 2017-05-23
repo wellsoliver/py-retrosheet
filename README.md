@@ -63,4 +63,4 @@ Github user jeffcrow made many fixes and additions and added sqlite support
 JUST THE DATA
 -------------
 
-If you're using PostgreSQL (and you should be), you can get a dump of all data up through 2014 (warning: 502MB) [here](https://www.dropbox.com/s/nv9712l1ylvh64n/retrosheet.psql?dl=0)
+If you're using PostgreSQL (and you should be), you can get a dump of all data up through 2016 (warning: 521MB) [here](https://www.dropbox.com/s/kg01np4ev3u2jsx/retrosheet.2016.psql?dl=0)
