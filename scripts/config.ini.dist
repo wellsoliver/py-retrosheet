@@ -26,3 +26,10 @@ gamelogs_url = http://www.retrosheet.org/gamelogs/index.html
 
 [debug]
 verbose = True
+
+[content]
+charset=UTF-8
+
+[retrosheet_mysql]
+record_check=False
+multiple_insert_rows=1000

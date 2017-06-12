@@ -1,18 +1,25 @@
-import urllib
 import os
-import ConfigParser
-import Queue
+import requests
+try:
+    # Python 3.x
+    from configparser import ConfigParser
+    import queue
+except ImportError:
+    # Python 2.x
+    from ConfigParser import ConfigParser
+    import Queue as queue
+
 import re
 import getopt
 import sys
 from classes.fetcher import Fetcher
 
 # load configs
-config = ConfigParser.ConfigParser()
-config.readfp(open('config.ini'))
+config = ConfigParser()
+config.read('config.ini')
 
 # initialize variables / set defaults
-queue = Queue.Queue()
+queue = queue.Queue()
 YEAR = False
 threads = []
 num_threads = config.getint('download', 'num_threads')
@@ -31,7 +38,7 @@ absolute_path = os.path.abspath(path)
 try:
     os.chdir(absolute_path)
 except OSError:
-    print "Directory %s does not exist, creating..." % absolute_path
+    print("Directory %s does not exist, creating..." % absolute_path)
     os.makedirs(absolute_path)
 
 
@@ -40,7 +47,7 @@ except OSError:
 try:
     opts, args = getopt.getopt(sys.argv[1:], "y:", ["year="])
 except getopt.GetoptError as e:
-    print 'Invalid arguments. Exiting.'
+    print('Invalid arguments. Exiting.')
     raise SystemExit
 
 # set year if passed in
@@ -55,15 +62,14 @@ if config.getboolean('download', 'dl_eventfiles'):
 
     # log next action
     if YEAR:
-        print "Queuing up Event Files for download (%s only)." % YEAR
+        print("Queuing up Event Files for download (%s only)." % YEAR)
     else:
-        print "Queuing up Event Files for download."
+        print("Queuing up Event Files for download.")
 
     # parse retrosheet page for files and add urls to the queue
-    retrosheet_url = config.get('retrosheet', 'eventfiles_url')
+    eventfiles_requests = requests.get(config.get('retrosheet', 'eventfiles_url'))
     pattern = r'(\d{4}?)eve\.zip'
-    html = urllib.urlopen(retrosheet_url).read()
-    matches = re.finditer(pattern, html, re.S)
+    matches = re.finditer(pattern, eventfiles_requests.text, re.S)
     for match in matches:
     
         # if we are looking for a year and this isnt the one, skip it
@@ -82,15 +88,14 @@ if config.getboolean('download', 'dl_gamelogs'):
 
     # log next action
     if YEAR:
-        print "Queuing up Game Logs for download (%s only)." % YEAR
+        print("Queuing up Game Logs for download (%s only)." % YEAR)
     else:
-        print "Queuing up Game Logs for download."
+        print("Queuing up Game Logs for download.")
 
     # parse retrosheet page for files and add urls to the queue
-    retrosheet_url = config.get('retrosheet', 'gamelogs_url')
+    egamelogs_requests = requests.get(config.get('retrosheet', 'gamelogs_url'))
     pattern = r'gl(\d{4})\.zip'
-    html = urllib.urlopen(retrosheet_url).read()
-    matches = re.finditer(pattern, html, re.S)
+    matches = re.finditer(pattern, egamelogs_requests.text, re.S)
     for match in matches:
     
         # if we are looking for a year and this isnt the one, skip it
