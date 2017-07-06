@@ -137,11 +137,34 @@ def parse_events(file, conn, bound_param):
             sql = 'INSERT INTO events(%s) VALUES(%s)' % (','.join(headers), ','.join([bound_param] * len(headers)))
             conn.execute(sql, row)
 
+def env_to_config(config):
+    """If certain environment variables are set have them override existing
+    settings in the `config` object."""
+    cfg_items = [{'section': 'database', 'option': 'engine'},
+                 {'section': 'database', 'option': 'host'},
+                 {'section': 'database', 'option': 'database'},
+                 {'section': 'database', 'option': 'user'},
+                 {'section': 'database', 'option': 'password'},
+                 {'section': 'download', 'option': 'directory'},
+                 {'section': 'download', 'option': 'num_threads'},
+                 {'section': 'download', 'option': 'dl_eventfiles'},
+                 {'section': 'download', 'option': 'dl_gamelogs'},
+                 {'section': 'chadwick', 'option': 'directory'},
+                 {'section': 'retrosheet', 'option': 'eventfiles_url'},
+                 {'section': 'retrosheet', 'option': 'gamelogs_url'},
+                 {'section': 'debug', 'option': 'verbose'}]
+    for item in cfg_items:
+        env_var_name = (item['section']+'_'+item['option']).upper()
+        env_var_value = os.environ.get(env_var_name)
+        if env_var_value is not None:
+            config.set(item['section'], item['option'], env_var_value)
+    return config
 
 def main():
     config = ConfigParser.ConfigParser()
     config.readfp(open('config.ini'))
-    
+    config = env_to_config(config)
+
     try:
         conn = connect(config)
     except Exception, e:
