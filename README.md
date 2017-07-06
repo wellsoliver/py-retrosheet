@@ -36,7 +36,7 @@ The `scripts/download.py` script downloads Retrosheet data. Edit the config.ini 
 ### Parse into SQL
 
     python parse.py [-y <4-digit-year>]
-    
+
 After the files have been downloaded, parse them into SQL with `parse.py`.
 
 1. Create database called `retrosheet` (or whatever).
@@ -46,14 +46,23 @@ After the files have been downloaded, parse them into SQL with `parse.py`.
 3. Configure the file `config.ini` with your appropriate `ENGINE`, `USER`, `HOST`, `PASSWORD`, and `DATABASE` values - if you're using postgres, you can optionally define `SCHEMA` and download directory
 
     - Valid values for `ENGINE` are valid sqlalchemy engines e.g. 'mysql', 'postgresql', or 'sqlite',
-    
+
     - If you have your server configured to allow passwordless connections, you don't need to define `USER` and `PASSWORD`.
-    
+
     - If you are using sqlite3, `database` in the config should be the path to your database file.
-    
+
     - Specify directory for retrosheet files to be downloaded to, needs to exist before script runs
-    
+
 5. Run `parse.py` to parse the files and insert the data into the database. (optionally use `-y YYYY` to import just one year)
+
+#### Environment Variables (optional)
+
+Instead of editing the `config.ini` file, you may, optionally, use environment variables to set configuration options. Name the environment variables in the format `<SECTION>_<OPTION>`. Thus, an environment variable that sets the database username would be called `DATABASE_USER`. The environment variables overwrite any settings in the `config.ini` file.
+
+Example,
+
+    $ DATABASE_DATABASE=rtrsht_testing CHADWICK_DIRECTORY=/usr/bin/ python parse.py -y 1956
+
 
 YE GRATITUDE
 ------------
