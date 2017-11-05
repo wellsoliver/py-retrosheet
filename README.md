@@ -73,3 +73,6 @@ JUST THE DATA
 -------------
 
 If you're using PostgreSQL (and you should be), you can get a dump of all data up through 2016 (warning: 521MB) [here](https://www.dropbox.com/s/kg01np4ev3u2jsx/retrosheet.2016.psql?dl=0)
+
+### Importing into PostgreSQL
+After creating a PostgreSQL user named `wells`, you can create a database from the dump by running `pg_restore -U <USERNAME> -d <DATABASE> -1 retrosheet.2016.psql`.
