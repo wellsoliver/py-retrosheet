@@ -76,3 +76,7 @@ If you're using PostgreSQL (and you should be), you can get a dump of all data u
 
 ### Importing into PostgreSQL
 After creating a PostgreSQL user named `wells`, you can create a database from the dump by running `pg_restore -U <USERNAME> -d <DATABASE> -1 retrosheet.2016.psql`.
+
+### License
+
+I don't care. Have at it.
