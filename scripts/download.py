@@ -62,7 +62,10 @@ if config.getboolean('download', 'dl_eventfiles'):
     # parse retrosheet page for files and add urls to the queue
     retrosheet_url = config.get('retrosheet', 'eventfiles_url')
     pattern = r'(\d{4}?)eve\.zip'
-    html = urllib.urlopen(retrosheet_url).read()
+    page_extractor = urllib.URLopener()
+    page_extractor.addheaders = [('User-Agent', 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/33.0.1750.149 Safari/537.36'), ('Accept', '*/*')]  
+    page_extractor.version = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/33.0.1750.149 Safari/537.36'
+    html = page_extractor.open(retrosheet_url).read()
     matches = re.finditer(pattern, html, re.S)
     for match in matches:
     
@@ -71,7 +74,7 @@ if config.getboolean('download', 'dl_eventfiles'):
             continue
         
         # compile absolute url and add to queue
-        url = 'http://www.retrosheet.org/events/%seve.zip' % match.group(1)
+        url = 'https://www.retrosheet.org/events/%seve.zip' % match.group(1)
         queue.put(url)
 
 #################################
