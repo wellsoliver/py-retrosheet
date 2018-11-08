@@ -45,7 +45,8 @@ def parse_rosters(file, conn, bound_param):
     print "processing %s" % file
     
     try:
-        year = re.search(r"\d{4}", os.path.basename(file)).group(0)
+        year = re.search(r"(\d{4})\.", os.path.basename(file)).group(1)
+        team = os.path.basename(file)[0:3]
     except:
         print 'cannot get year from roster file %s' % file
         return None
@@ -54,6 +55,15 @@ def parse_rosters(file, conn, bound_param):
 
     for row in reader:
         row.insert(0, year) # Insert year
+
+        if (len(row) < 3):
+            print row
+            continue
+
+        if (len(row) < 7):
+            row.append(team)
+        else:
+            row[6] = team
 
         sql = 'SELECT * FROM rosters WHERE year = %s AND player_id = %s AND team_tx = %s'
         res = conn.execute(sql, [row[0], row[1], row[6]])
@@ -205,7 +215,9 @@ def main():
                     useyear = True
     else:
         for file in files:
-            year = re.search(r"^\d{4}", os.path.basename(file)).group(0)
+            match = re.search(r"^\d{4}", os.path.basename(file))
+            if match:
+                year = match.group(0)
             if year not in years:
                 years.append(int(year))
 
