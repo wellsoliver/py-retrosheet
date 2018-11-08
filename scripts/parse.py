@@ -132,7 +132,9 @@ def parse_events(file, conn, bound_param):
 
     if conn.engine.driver == 'psycopg2':
         conn.execute('DELETE FROM events WHERE game_id LIKE \'%%' + year + '%%\'')
-        conn.execute('COPY events FROM %s WITH CSV HEADER', file)
+        f = open(file)
+        conn.connection.cursor().copy_expert('COPY events FROM STDIN WITH CSV HEADER', f)
+        f.close()
         conn.execute('COMMIT')
     else:
         reader = csv.reader(open(file))
