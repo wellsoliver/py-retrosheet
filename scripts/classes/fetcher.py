@@ -29,7 +29,7 @@ class Fetcher(threading.Thread):
 
             # log
             if(self.options['verbose']):
-                print "Fetching " + filename
+                print ("Fetching " + filename)
 
             # determine the local path
             f = "%s/%s" % (self.path, filename)
@@ -42,7 +42,7 @@ class Fetcher(threading.Thread):
             
                 #log
                 if(self.options['verbose']):
-                    print "Zip file detected. Extracting " + filename
+                    print("Zip file detected. Extracting " + filename)
                 
                 # extract the zip file
                 zip = zipfile.ZipFile(f, "r")

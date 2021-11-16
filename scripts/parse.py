@@ -21,8 +21,7 @@ def connect(config):
         USER = None if not config.has_option('database', 'user') else config.get('database', 'user')
         SCHEMA = None if not config.has_option('database', 'schema') else config.get('database', 'schema')
         PASSWORD = None if not config.has_option('database', 'password') else config.get('database', 'password')
-    except ConfigParser.NoOptionError:
-        print 'Need to define engine, user, password, host, and database parameters'
+        print ('Need to define engine, user, password, host, and database parameters')
         raise SystemExit
 
     if ENGINE == 'sqlite':
@@ -42,12 +41,12 @@ def connect(config):
 
 
 def parse_rosters(file, conn, bound_param):
-    print "processing %s" % file
+    print ("processing %s" % file)
     
     try:
         year = re.search(r"\d{4}", os.path.basename(file)).group(0)
     except:
-        print 'cannot get year from roster file %s' % file
+        print ('cannot get year from roster file %s' % file)
         return None
 
     reader = csv.reader(open(file))
@@ -68,7 +67,7 @@ def parse_rosters(file, conn, bound_param):
 
 
 def parse_teams(file, conn, bound_param):
-    print "processing %s" % file
+    print ("processing %s" % file)
 
     reader = csv.reader(open(file))
     for row in reader:
@@ -86,12 +85,12 @@ def parse_teams(file, conn, bound_param):
 
 
 def parse_games(file, conn, bound_param):
-    print "processing %s" % file
+    print ("processing %s" % file)
 
     try:
         year = re.search(r"\d{4}", os.path.basename(file)).group(0)
     except:
-        print 'cannot get year from game file %s' % file
+        print ('cannot get year from game file %s' % file)
         return None
  
     if conn.engine.driver == 'psycopg2':
@@ -112,12 +111,12 @@ def parse_games(file, conn, bound_param):
 
 
 def parse_events(file, conn, bound_param):
-    print "processing %s" % file
+    print ("processing %s" % file)
 
     try:
         year = re.search(r"\d{4}", os.path.basename(file)).group(0)
     except:
-        print 'cannot get year from event file %s' % file
+        print ('cannot get year from event file %s' % file)
         return None
 
     if conn.engine.driver == 'psycopg2':
@@ -185,7 +184,7 @@ def main():
     if not os.path.exists(chadwick) \
         or not os.path.exists('%s/cwevent' % chadwick) \
         or not os.path.exists('%s/cwgame' % chadwick):
-        print 'chadwick does not exist in %s - exiting' % chadwick
+        print ('chadwick does not exist in %s - exiting' % chadwick)
         raise SystemExit
     
     os.chdir(path) # Chadwick seems to need to be in the directory
@@ -213,13 +212,13 @@ def main():
         if not os.path.isfile('%s/events-%d.csv' % (csvpath, year)):
             cmd = "%s/cwevent -q -n -f 0-96 -x 0-62 -y %d %d*.EV* > %s/events-%d.csv" % (chadwick, year, year, csvpath, year)
             if(verbose):
-                print "calling '" + cmd + "'"
+                print ("calling '" + cmd + "'")
             subprocess.call(cmd, shell=True)
 
         if not os.path.isfile('%s/games-%d.csv' % (csvpath, year)):
             cmd = "%s/cwgame -q -n -f 0-83 -y %d %d*.EV* > %s/games-%d.csv" % (chadwick, year, year, csvpath, year)
             if(verbose):
-                print "calling '" + cmd + "'"
+                print ("calling '" + cmd + "'")
             subprocess.call(cmd, shell=True)
 
     if 'teams' in modules:

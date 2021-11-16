@@ -31,7 +31,7 @@ absolute_path = os.path.abspath(path)
 try:
     os.chdir(absolute_path)
 except OSError:
-    print "Directory %s does not exist, creating..." % absolute_path
+    print ("Directory %s does not exist, creating..." % absolute_path)
     os.makedirs(absolute_path)
 
 
@@ -40,7 +40,7 @@ except OSError:
 try:
     opts, args = getopt.getopt(sys.argv[1:], "y:", ["year="])
 except getopt.GetoptError as e:
-    print 'Invalid arguments. Exiting.'
+    print ('Invalid arguments. Exiting.')
     raise SystemExit
 
 # set year if passed in
@@ -55,9 +55,9 @@ if config.getboolean('download', 'dl_eventfiles'):
 
     # log next action
     if YEAR:
-        print "Queuing up Event Files for download (%s only)." % YEAR
+        print ("Queuing up Event Files for download (%s only)." % YEAR)
     else:
-        print "Queuing up Event Files for download."
+        print ("Queuing up Event Files for download.")
 
     # parse retrosheet page for files and add urls to the queue
     retrosheet_url = config.get('retrosheet', 'eventfiles_url')
@@ -82,9 +82,9 @@ if config.getboolean('download', 'dl_gamelogs'):
 
     # log next action
     if YEAR:
-        print "Queuing up Game Logs for download (%s only)." % YEAR
+        print ("Queuing up Game Logs for download (%s only)." % YEAR)
     else:
-        print "Queuing up Game Logs for download."
+        print ("Queuing up Game Logs for download.")
 
     # parse retrosheet page for files and add urls to the queue
     retrosheet_url = config.get('retrosheet', 'gamelogs_url')
