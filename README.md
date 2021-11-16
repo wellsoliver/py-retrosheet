@@ -6,9 +6,9 @@ Python scripts for Retrosheet data downloading and parsing.
 YE REQUIREMENTS
 ---------------
 
-- Chadwick 0.6.2 http://chadwick.sourceforge.net/
+- Chadwick 0.7.2 http://chadwick.sourceforge.net/ (0.7.2 tested, should work with all versions)
 
-- python 2.5+ (don't know about 3.0, sorry)
+- python 3.8+ (For python 2.5+ compatibility: [Here is a zip of the python code](https://github.com/MatthewMaginniss/py-retrosheet/releases/tag/python-v2.5%2B))
 
 - sqlalchemy: http://www.sqlalchemy.org/
 

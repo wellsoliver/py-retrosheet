@@ -1,7 +1,7 @@
-import urllib
+import urllib.request
 import os
 import threading
-import Queue
+import queue
 import zipfile
 
 class Fetcher(threading.Thread):
@@ -21,7 +21,7 @@ class Fetcher(threading.Thread):
             # exit if queue empty
             try:
                 url = self.queue.get_nowait()
-            except Queue.Empty:
+            except queue.Empty:
                 break
 
             # extract file name from url
@@ -29,20 +29,20 @@ class Fetcher(threading.Thread):
 
             # log
             if(self.options['verbose']):
-                print "Fetching " + filename
+                print ("Fetching " + filename)
 
             # determine the local path
             f = "%s/%s" % (self.path, filename)
             
             # save file
-            urllib.urlretrieve(url, f)
+            urllib.request.urlretrieve(url, f)
 
             # is this a zip file?
             if (zipfile.is_zipfile(f)):
             
                 #log
                 if(self.options['verbose']):
-                    print "Zip file detected. Extracting " + filename
+                    print("Zip file detected. Extracting " + filename)
                 
                 # extract the zip file
                 zip = zipfile.ZipFile(f, "r")
