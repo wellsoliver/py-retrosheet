@@ -166,7 +166,7 @@ def main():
 
     try:
         conn = connect(config)
-    except Exception, e:
+    except Exception as e:
         print('Cannot connect to database: %s' % e)
         raise SystemExit
     
