@@ -1,11 +1,8 @@
 import os
 import subprocess
-import ConfigParser
-import threading
-import Queue
+import configparser
 import sqlalchemy
 import csv
-import time
 import glob
 import re
 import getopt
@@ -21,6 +18,7 @@ def connect(config):
         USER = None if not config.has_option('database', 'user') else config.get('database', 'user')
         SCHEMA = None if not config.has_option('database', 'schema') else config.get('database', 'schema')
         PASSWORD = None if not config.has_option('database', 'password') else config.get('database', 'password')
+    except configparser.NoOptionError:
         print ('Need to define engine, user, password, host, and database parameters')
         raise SystemExit
 
@@ -160,8 +158,8 @@ def env_to_config(config):
     return config
 
 def main():
-    config = ConfigParser.ConfigParser()
-    config.readfp(open('config.ini'))
+    config = configparser.ConfigParser()
+    config.read_file(open('config.ini'))
     config = env_to_config(config)
 
     try:
