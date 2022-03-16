@@ -6,7 +6,7 @@ authors = ["Shinichi Nakagawa <spirits.is.my.rader@gmail.com>"]
 license = "MIT"
 
 [tool.poetry.dependencies]
-python = "^3.8"
+python = "^3.9"
 click = "^7.1.2"
 ephem = "^3.7.7"
 numpy = "^1.19.0"
